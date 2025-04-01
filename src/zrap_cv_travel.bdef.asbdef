@@ -1,0 +1,26 @@
+projection;
+//strict ( 2 );
+use draft;
+
+define behavior for ZRAP_CV_TRAVEL alias Travel
+use etag
+{
+  use create;
+  use update;
+  use delete;
+
+  use association _Booking { create; with draft; }
+
+  use action acceptTravel;
+  use action rejectTravel;
+  use action bookingfeeDiscount;
+}
+
+define behavior for ZRAP_CV_BOOKING alias Booking
+use etag
+{
+  use update;
+  use delete;
+
+  use association _Travel { with draft; }
+}
