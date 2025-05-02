@@ -1,0 +1,62 @@
+CLASS ztest_class_rj DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_oo_adt_classrun .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS ztest_class_rj IMPLEMENTATION.
+
+
+  METHOD if_oo_adt_classrun~main.
+
+    DATA: timestamp1 TYPE utclong,
+          timestamp2 TYPE utclong,
+          difference TYPE decfloat34,
+          date_user  TYPE d,
+          time_user  TYPE t.
+
+    timestamp1 = utclong_current(  ).
+    out->write( |Current UTC time: { timestamp1 }| ).
+
+    timestamp2 = utclong_add( val = timestamp1 days = 7 ).
+    out->write( |Adding 7 days to UTC time: { timestamp2 }| ).
+
+    difference = utclong_diff( high = timestamp2  low = timestamp1 ).
+    out->write( |difference in timestamps in seconds: { difference }| ).
+
+    out->write( |difference in timestamps in days: { difference / 3600 / 24 }| ).
+
+    CONVERT UTCLONG utclong_current( )
+    INTO DATE date_user
+         TIME time_user
+         TIME ZONE cl_abap_context_info=>get_user_time_zone( ).
+
+    DATA(user_tz) = cl_abap_context_info=>get_user_time_zone( ).
+
+    out->write( |UTC time is split into date and time| ).
+    out->write( |accoridng to user timezone: { user_tz }| ).
+    out->write( |{ date_user DATE = USER }, { time_user TIME = USER }| ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+
+
+Output:
+Current UTC time: 2025-05-02 09:13:16.3134230
+Adding 7 days to UTC time: 2025-05-09 09:13:16.3134230
+difference in timestamps in seconds: 604800
+difference in timestamps in days: 7
+UTC time is split into date and time
+accoridng to user timezone: UTC
+05/02/2025, 09:13:16
