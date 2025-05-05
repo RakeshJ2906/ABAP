@@ -1,0 +1,46 @@
+CLASS ztest_class_rj DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_oo_adt_classrun .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS ztest_class_rj IMPLEMENTATION.
+
+
+  METHOD if_oo_adt_classrun~main.
+
+    SELECT FROM /dmo/connection AS a
+    INNER JOIN /dmo/connection AS b
+    ON a~airport_to_id = b~airport_from_id         "filter for shifting
+    AND b~airport_to_id <> a~airport_from_id       "exclude return flights
+    FIELDS a~airport_from_id,
+           concat_with_space( a~carrier_id, a~connection_id, 1 ) AS first_leg,
+           a~airport_to_id AS via_airport_id,
+           concat_with_space( b~carrier_id, b~connection_id, 1 ) AS second_leg,
+           b~airport_to_id
+    WHERE a~airport_from_id = 'FRA'
+    INTO TABLE @DATA(lt_data).
+
+    out->write( EXPORTING data = lt_data ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+****************************************************************************************************
+consider we have a table with flight connections (DMO/CONNECTION). We are interested in destinations 
+that we can reach starting from Frankfurt International Airport (FRA). But instead of direct flights,
+we are looking for flights with one transfer.
+
+The solution is a join of table /DMO/CONNECTION with itself. The first join condition requests that the 
+second connection (2nd leg) starts from the airport at which the first connection (1st leg) ends. 
+The second join condition, linked to the first with the AND operator, excludes combinations where the second 
+connection is a direct return flight to the original departure airport.
