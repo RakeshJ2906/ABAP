@@ -1,0 +1,38 @@
+CLASS ztest_class_rj DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_oo_adt_classrun .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS ztest_class_rj IMPLEMENTATION.
+
+
+  METHOD if_oo_adt_classrun~main.
+
+    SELECT FROM ( ( /dmo/carrier AS a
+                  LEFT OUTER JOIN /dmo/connection AS b
+                  ON a~carrier_id = b~carrier_id )
+                  LEFT OUTER JOIN /dmo/airport AS c
+                  ON b~airport_from_id = c~airport_id )
+                  LEFT OUTER JOIN /dmo/airport AS d
+                  ON b~airport_to_id = d~airport_id
+           FIELDS a~carrier_id AS Airline_Name,
+                  b~connection_id AS Flight_Name,
+                  concat_with_space( c~airport_id, c~name, 1 ) AS Airport_From,
+                  concat_with_space( d~airport_id, d~name, 1 ) AS Airport_To
+           WHERE a~carrier_id = 'AA'
+           INTO TABLE @DATA(lt_data).
+
+    out->write( EXPORTING data = lt_data ).
+
+  ENDMETHOD.
+
+ENDCLASS.
