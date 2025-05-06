@@ -1,5 +1,5 @@
 DATA(today) = cl_abap_context_info=>get_system_date( ).
-    DATA(currency_to) = 'INR'.
+DATA(currency_to) = 'INR'.
 
     SELECT FROM ( ( /dmo/connection AS a
                 LEFT OUTER JOIN /dmo/flight AS b
