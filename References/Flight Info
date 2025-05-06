@@ -1,0 +1,27 @@
+DATA(today) = cl_abap_context_info=>get_system_date( ).
+    DATA(currency_to) = 'INR'.
+
+    SELECT FROM ( ( /dmo/connection AS a
+                LEFT OUTER JOIN /dmo/flight AS b
+                ON a~carrier_id = b~carrier_id
+                AND a~connection_id = b~connection_id )
+                LEFT OUTER JOIN /dmo/airport AS c
+                ON a~airport_from_id = c~airport_id )
+                LEFT OUTER JOIN /dmo/airport AS d
+                ON a~airport_to_id = d~airport_id
+    FIELDS a~carrier_id AS Airline_ID,
+           a~connection_id AS Flight_No,
+           b~flight_date AS Flight_Date,
+           concat_with_space( a~airport_from_id, c~name, 1 ) AS Airport_From,
+           concat_with_space( a~airport_to_id, d~name, 1 ) AS Airport_To,
+           a~departure_time AS Departure_Time,
+           a~arrival_time AS Arrival_Time,
+           currency_conversion( amount = b~price,
+                                source_currency = b~currency_code,
+                                target_currency = @currency_to,
+                                exchange_rate_date = @today ) AS Price,
+           @currency_to AS Currency
+    WHERE a~carrier_id = 'AA'
+    INTO TABLE @DATA(result).
+
+    out->write( data = result ).
