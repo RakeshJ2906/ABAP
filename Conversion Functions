@@ -35,7 +35,8 @@
     currency_conversion( amount = total_price,
                          source_currency = currency_code,
                          target_currency = 'EUR',
-                         exchange_rate_date = @today ) AS price_in_eur
+                         exchange_rate_date = @today
+                         on_error           = @sql_currency_conversion=>c_on_error-set_to_null ) AS price_in_eur
     WHERE customer_id = '000093' AND currency_code <> 'EUR'
     INTO TABLE @DATA(price_eur).
 
