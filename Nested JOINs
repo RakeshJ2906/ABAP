@@ -24,8 +24,8 @@ CLASS ztest_class_rj IMPLEMENTATION.
                   ON b~airport_from_id = c~airport_id )
                   LEFT OUTER JOIN /dmo/airport AS d
                   ON b~airport_to_id = d~airport_id
-           FIELDS a~carrier_id AS Airline_Name,
-                  b~connection_id AS Flight_Name,
+           FIELDS a~carrier_id AS Airline_ID,
+                  b~connection_id AS Flight_No,
                   concat_with_space( c~airport_id, c~name, 1 ) AS Airport_From,
                   concat_with_space( d~airport_id, d~name, 1 ) AS Airport_To
            WHERE a~carrier_id = 'AA'
