@@ -1,1 +1,27 @@
 
+  DATA(today) = cl_abap_context_info=>get_system_date( ).
+   
+  SELECT
+    FROM /lrn/connection AS c
+    LEFT OUTER JOIN /lrn/airport AS f
+      ON c~airport_from_id = f~airport_id
+    LEFT OUTER JOIN /lrn/airport AS t
+      ON c~airport_to_id = t~airport_id
+  FIELDS carrier_id, connection_id,
+         airport_from_id, airport_to_id, departure_time, arrival_time,
+         f~timzone AS timezone_from,
+         t~timzone AS timezone_to,
+         div( 
+             tstmp_seconds_between(
+               tstmp1 = dats_tims_to_tstmp(
+                          date = @today,
+                          time = c~departure_time,
+                          tzone = f~timzone ),
+               tstmp2 = dats_tims_to_tstmp(
+                          date = @today,
+                          time = c~arrival_time,
+                          tzone = t~timzone )      
+                                            )
+                , 60 ) as duration                            
+      INTO TABLE @connections_buffer.
+
