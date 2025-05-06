@@ -1,0 +1,26 @@
+"Only Aggregate Functions
+    SELECT FROM /dmo/connection
+    FIELDS MAX( distance ) AS max_distance,
+           MIN( distance ) AS min_distance,
+           SUM( distance ) AS sum_distance,
+           AVG( distance ) AS avg_distance,
+           COUNT( * ) AS records_count,
+           COUNT( DISTINCT airport_from_id ) AS distinct_records
+    WHERE carrier_id = 'LH'
+    INTO TABLE @DATA(result).
+
+    out->write( data = result ).
+
+************************************************************************
+
+"Group By addition
+    SELECT FROM /dmo/connection
+    FIELDS carrier_id,
+           MAX( distance ) AS max_distance,
+           MIN( distance ) AS min_distance,
+           SUM( distance ) AS sum_distance,
+           COUNT( * ) AS records_count
+    GROUP BY carrier_id
+    INTO TABLE @DATA(result_group).
+
+    out->write( data = result_group ).
