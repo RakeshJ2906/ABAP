@@ -1,0 +1,42 @@
+"Time conversion
+    SELECT FROM /dmo/travel
+    FIELDS lastchangedat,
+    CAST( lastchangedat AS DEC( 15, 0 ) ) AS lastchanged_short,
+    tstmp_to_dats( tstmp = CAST( lastchangedat AS DEC( 15, 0 ) ),
+                   tzone = CAST( 'EST' AS CHAR( 6 )  ) ) AS date_est,
+    tstmp_to_tims( tstmp = CAST( lastchangedat AS DEC( 15, 0 ) ),
+                   tzone = CAST( 'EST' AS CHAR( 6 ) ) ) AS time_est
+    WHERE customer_id = '000001'
+    INTO TABLE @DATA(result_in_est).
+
+    out->write( EXPORTING data = result_in_est name = '******Time in EST*******' ).
+
+**************************************************************************************
+
+    "Unit conversion
+    SELECT FROM /dmo/connection
+    FIELDS distance, distance_unit,
+    unit_conversion( quantity = CAST( distance AS QUAN ),
+                     source_unit = distance_unit,
+                     target_unit = CAST( 'MI' AS UNIT ) ) AS distance_in_miles
+    WHERE airport_from_id = 'FRA'
+    INTO TABLE @DATA(distance_miles).
+
+    out->write( data = distance_miles name = '*******Distance in Miles*******' ).
+
+***************************************************************************************
+
+    "Currency Conversion
+
+    DATA(today) = cl_abap_context_info=>get_system_date( ).
+
+    SELECT FROM /dmo/travel
+    FIELDS total_price, currency_code,
+    currency_conversion( amount = total_price,
+                         source_currency = currency_code,
+                         target_currency = 'EUR',
+                         exchange_rate_date = @today ) AS price_in_eur
+    WHERE customer_id = '000093' AND currency_code <> 'EUR'
+    INTO TABLE @DATA(price_eur).
+
+    out->write( data = price_eur name = '********Price in EUR*******' ).
