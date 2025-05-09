@@ -100,6 +100,4 @@ CLASS lcl_passgenger IMPLEMENTATION.
 
   ENDMETHOD.
 
-ENDCLASS.SS.
-
-***************************************Local Class*****************************
+ENDCLASS.
