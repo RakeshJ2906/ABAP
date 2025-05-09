@@ -1,0 +1,105 @@
+***************************************Global Class*****************************
+CLASS ztest_class_rj DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    INTERFACES if_oo_adt_classrun .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+CLASS ztest_class_rj IMPLEMENTATION.
+
+  METHOD if_oo_adt_classrun~main.
+
+    "Main Class (Flight Class)
+    DATA(flight) = NEW lcl_flights( ).
+    flight->get_connection_details( RECEIVING r_result = DATA(ls_result) ).
+    out->write( data = ls_result ).
+
+    "Sub Class (Passenger Class)
+    DATA(flight_passenger) = NEW lcl_passgenger( ).
+    flight_passenger->get_connection_details( RECEIVING r_result = DATA(ls_sub_result) ).
+    out->write( ls_sub_result ).
+
+  ENDMETHOD.
+
+***************************************Local Class*****************************
+
+ENDCLACLASS lcl_flights DEFINITION.
+
+  PUBLIC SECTION.
+
+    TYPES: BEGIN OF st_connection_details,
+             carrier_id      TYPE /dmo/carrier_id,
+             connection_id   TYPE /dmo/connection_id,
+             airport_from_id TYPE /dmo/airport_from_id,
+             airport_to_id   TYPE /dmo/airport_to_id,
+             departure_time  TYPE /dmo/flight_departure_time,
+             arrival_time    TYPE /dmo/flight_departure_time,
+             duration        TYPE p LENGTH 2 DECIMALS 2,
+             distance        TYPE /dmo/flight_distance,
+             distance_unit   TYPE msehi,
+           END OF st_connection_details.
+
+    METHODS: get_connection_details RETURNING VALUE(r_result) TYPE st_connection_details.
+
+  PROTECTED SECTION.
+
+  PRIVATE SECTION.
+
+ENDCLASS.
+
+CLASS lcl_flights IMPLEMENTATION.
+
+  METHOD get_connection_details.
+
+    DATA(today) = cl_abap_context_info=>get_system_date( ).
+    DATA(tzone) = cl_abap_context_info=>get_user_time_zone( ).
+
+    SELECT FROM /dmo/connection
+    FIELDS carrier_id, connection_id,
+    airport_from_id, airport_to_id,
+    departure_time, arrival_time,
+    division( tstmp_seconds_between(
+                          tstmp1 = dats_tims_to_tstmp( date = @today, time = departure_time, tzone = @tzone ),
+                          tstmp2 = dats_tims_to_tstmp( date = @today, time = arrival_time, tzone = @tzone )
+                         ), 3600, 2 ) AS duration
+    WHERE carrier_id = 'AA'
+    INTO @r_result.
+    ENDSELECT.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lcl_passgenger DEFINITION INHERITING FROM lcl_flights.
+
+  PUBLIC SECTION.
+    METHODS get_connection_details REDEFINITION.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+ENDCLASS.
+
+CLASS lcl_passgenger IMPLEMENTATION.
+
+  METHOD get_connection_details.
+
+    super->get_connection_details( RECEIVING r_result = DATA(i_result) ).
+
+    SELECT FROM /dmo/connection
+    FIELDS distance, distance_unit
+    WHERE carrier_id = @i_result-carrier_id
+    INTO CORRESPONDING FIELDS OF @i_result.
+    ENDSELECT.
+
+    r_result = CORRESPONDING #( i_result ).
+
+  ENDMETHOD.
+
+ENDCLASS.SS.
+
+***************************************Local Class*****************************
