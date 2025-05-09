@@ -25,10 +25,10 @@ CLASS ztest_class_rj IMPLEMENTATION.
     connection->flight_info( IMPORTING airlineid = DATA(airline_id) connectionnumber = DATA(connection_no)
                                        fromairport = DATA(from_airport) toairport = DATA(to_airport) ).
 
-    out->write( | 'Airline ID:'    { airline_id }    | ).
-    out->write( | 'Connection ID:' { connection_no } | ).
-    out->write( | 'From Airport:'  { from_airport }  | ).
-    out->write( | 'To Airport:'    { to_airport }    | ).
+    out->write( | Airline ID: { airline_id } | ).
+    out->write( | Connection ID: { connection_no } | ).
+    out->write( | From Airport: { from_airport } | ).
+    out->write( | To Airport: { to_airport } | ).
 
   ENDMETHOD.
 
