@@ -15,6 +15,7 @@ define root view entity ZRAP_IV_TRAVEL
   association [0..1] to /DMO/I_Agency   as _Agency   on $projection.AgencyID = _Agency.AgencyID
   association [0..1] to /DMO/I_Customer as _Customer on $projection.CustomerID = _Customer.CustomerID
   association [0..1] to I_Currency      as _Currency on $projection.CurrencyCode = _Currency.Currency
+  association [1..1] to ZRAP_IV_STATUS  as _Status   on $projection.TravelStatus = _Status.OverallStatus
 {
   key travel_uuid           as TravelUUID,
       travel_id             as TravelID,
@@ -29,6 +30,12 @@ define root view entity ZRAP_IV_TRAVEL
       currency_code         as CurrencyCode,
       description           as Description,
       overall_status        as TravelStatus,
+      case overall_status
+        when 'A' then 3
+        when 'O' then 2
+        when 'X' then 1
+                 else 0
+      end as StatusCriticality,
       @Semantics.user.createdBy: true
       created_by            as CreatedBy,
       @Semantics.systemDateTime.createdAt: true
@@ -44,5 +51,6 @@ define root view entity ZRAP_IV_TRAVEL
       _Booking,
       _Agency,
       _Customer,
-      _Currency
+      _Currency,
+      _Status
 }
