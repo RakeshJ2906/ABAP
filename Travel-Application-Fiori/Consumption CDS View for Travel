@@ -4,11 +4,14 @@
 @Search.searchable: true
 @Metadata.ignorePropagatedAnnotations: false
 @Metadata.allowExtensions: true
+@ObjectModel.semanticKey: ['TravelID']
 define root view entity ZRAP_CV_TRAVEL
   as projection on ZRAP_IV_TRAVEL as Travel
 {
   key TravelUUID,
       @Search.defaultSearchElement: true
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'zrap_iv_travel', element: 'TravelUUID' } }]
+      @ObjectModel.text.element: ['Description']
       TravelID,
       @Consumption.valueHelpDefinition: [{ entity: { name: '/DMO/I_Agency', element: 'AgencyID'} }]
       @ObjectModel.text.element: ['AgencyName']
@@ -28,8 +31,14 @@ define root view entity ZRAP_CV_TRAVEL
       TotalPrice,
       @Consumption.valueHelpDefinition: [{ entity: { name: 'I_Currency', element: 'Currency'} }]
       CurrencyCode,
+      @Search.defaultSearchElement: true
+      @Search.fuzzinessThreshold: 0.7
       Description,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'ZRAP_IV_STATUS', element: 'OverallStatus'} }]
+      @ObjectModel.text.element: [ 'Status' ]
       TravelStatus,
+      _Status.Text as Status,
+      StatusCriticality,
       LastChangedAt,
       LocalLastChangedAt,
 
@@ -37,5 +46,6 @@ define root view entity ZRAP_CV_TRAVEL
       _Agency,
       _Booking : redirected to composition child ZRAP_CV_BOOKING,
       _Currency,
-      _Customer
+      _Customer,
+      _Status
 }
