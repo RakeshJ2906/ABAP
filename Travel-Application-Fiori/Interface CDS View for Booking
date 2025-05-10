@@ -20,6 +20,7 @@ define view entity ZRAP_IV_BOOKING
                                                              and $projection.ConnectionID = _Flight.ConnectionID
                                                              and $projection.FlightDate   = _Flight.FlightDate
   association [0..1] to I_Currency            as _Currency   on  $projection.CurrencyCode = _Currency.Currency
+  association [1..1] to ZRAP_IV_AIRLINE_URL   as _AirlineURL on  $projection.CarrierID = _AirlineURL.CarrierId
 {
   key booking_uuid          as BookingUUID,
       travel_uuid           as TravelUUID,
@@ -45,5 +46,6 @@ define view entity ZRAP_IV_BOOKING
       _Carrier,
       _Connection,
       _Flight,
-      _Currency
+      _Currency,
+      _AirlineURL
 }
