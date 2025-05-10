@@ -1,5 +1,5 @@
 managed implementation in class zbp_rap_iv_travel unique;
-//strict ( 2 );
+strict ( 2 );
 with draft;
 
 define behavior for ZRAP_IV_TRAVEL alias Travel
@@ -28,10 +28,17 @@ etag master LocalLastChangedAt
   determination calculateTotalPrice on modify { field BookingFee, CurrencyCode; }
   determination calculateTravelID on save { create; }
 
-  validation validateAgency on save { field AgencyID; create; }
-  validation validateCustomer on save { field CustomerID; create; }
-  validation validateDates on save { field BeginDate, EndDate; create; }
+  side effects { field BookingFee affects field TotalPrice;
+                 field CurrencyCode affects field TotalPrice; }
 
+  validation validateAgency on save { field AgencyID; create; update; }
+  validation validateCustomer on save { field CustomerID; create; update; }
+  validation validateDates on save { field BeginDate, EndDate; create; update; }
+
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Edit;
+  draft action Resume;
   draft determine action Prepare
   {
     validation validateAgency;
@@ -77,6 +84,8 @@ etag master LocalLastChangedAt
 
   determination calculateBookingID on modify { create; }
   determination calculateTotalPrice on modify { field FlightPrice, CurrencyCode; }
+  side effects { field FlightPrice affects field _Travel.TotalPrice;
+                 field CurrencyCode affects field _Travel.TotalPrice; }
 
   mapping for zrap_tb_booking
     {
