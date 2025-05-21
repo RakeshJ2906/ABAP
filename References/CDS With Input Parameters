@@ -1,0 +1,33 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'CDS View with Parameters'
+@Metadata.ignorePropagatedAnnotations: true
+@ObjectModel.usageType:{
+    serviceQuality: #X,
+    sizeCategory: #S,
+    dataClass: #MIXED
+}
+define view entity ZRJ_CDS_PARAMETERS
+  with parameters
+    targetCurr : abap.cuky, 
+    @Environment.systemField: #SYSTEM_DATE //Runtime populates with system field in case parameter not provided by user
+    ExRateDate : abap.dats
+  as select from /dmo/flight
+{
+  key carrier_id as CarrierId,
+  key connection_id as ConnectionId,
+  key flight_date as FlightDate,
+      @Semantics.amount.currencyCode: 'SourceCurrencyCode'
+      price as Price,
+      currency_code as SourceCurrencyCode,
+      @Semantics.amount.currencyCode: 'TargetCurrencyCode'
+      currency_conversion( amount => price,
+                           source_currency => currency_code,
+                           target_currency => $parameters.targetCurr,
+                           exchange_rate_date => $parameters.ExRateDate ) as PriceConverted,
+      $parameters.targetCurr as TargetCurrencyCode,
+      $parameters.ExRateDate as ConversionDate,
+      plane_type_id as PlaneTypeId,
+      seats_max as SeatsMax,
+      seats_occupied as SeatsOccupied
+}
