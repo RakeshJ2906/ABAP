@@ -456,7 +456,11 @@ CLASS lhc_Booking IMPLEMENTATION.
       SORT bookings BY BookingID DESCENDING.
 
       "Get Max Booking ID
-      DATA(lv_max_book_id) = bookings[ 1 ]-BookingID.
+      IF bookings[] is not initial.
+        DATA(lv_max_book_id) = bookings[ 1 ]-BookingID.
+      ELSE.
+        lv_max_book_id = 0.
+      ENDIF.
 
       "Fill a table for all bookings that do not have Booking ID
       LOOP AT bookings_temp INTO DATA(ls_bookings) WHERE BookingID IS INITIAL.
