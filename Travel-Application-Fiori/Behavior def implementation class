@@ -462,6 +462,7 @@ CLASS lhc_Booking IMPLEMENTATION.
       LOOP AT bookings_temp INTO DATA(ls_bookings) WHERE BookingID IS INITIAL.
         APPEND VALUE #( %tky = ls_bookings-%tky
                         BookingID = lv_max_book_id + 1 ) TO updated_data.
+        lv_max_book_id += 1.
       ENDLOOP.
 
     ENDLOOP.
