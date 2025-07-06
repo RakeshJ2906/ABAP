@@ -1,0 +1,32 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@AbapCatalog.extensibility.extensible: true
+@EndUserText.label: 'Consumption View for Booking Supplements'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define view entity ZRAP_CV_BOOK_SUP
+  as projection on ZRAP_IV_BOOK_SUP as BookSuppl
+{
+  key TravelId,
+  key BookingId,
+  key BookingSupplementId,
+      @Consumption.valueHelpDefinition: [{ entity: { name: '/DMO/I_Supplement', element: 'SupplementID' },
+                                           additionalBinding: [ { localElement: 'SupplementId', element: 'SupplementID' },
+                                                                { localElement: 'Price', element: 'Price', usage: #RESULT },
+                                                                { localElement: 'CurrencyCode', element: 'CurrencyCode',  usage: #RESULT }
+                                                              ] }]
+      @ObjectModel.text.element: [ 'SupplDescription' ]
+      SupplementId,
+      _SupplementText.Description as SupplDescription : localized,
+      Price,
+      @Consumption.valueHelpDefinition: [{entity: {name: 'I_Currency', element: 'Currency' }}]
+      CurrencyCode,
+      CreatedBy,
+      LastChangedBy,
+      LocalLastChangedAt,
+
+      /* Associations */
+      _Booking : redirected to parent ZRAP_CV_BOOKING,
+      _Supplement,
+      _SupplementText,
+      _Travel : redirected to ZRAP_CV_TRAVEL
+}
