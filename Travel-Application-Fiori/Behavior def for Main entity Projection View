@@ -1,5 +1,5 @@
 projection;
-strict ( 2 ); //Uncomment this line in order to enable strict mode 2. The strict mode has two variants (strict(1), strict(2)) and is prerequisite to be future proof regarding syntax and to be able to release your BO.
+strict ( 2 );
 use draft;
 use side effects;
 
@@ -14,9 +14,11 @@ use etag
   use action rejectTravel;
   use action bookingfeeDiscount;
 
-  use action Edit;
+  use function GetDefaultsForCreate;
+
   use action Activate;
   use action Discard;
+  use action Edit;
   use action Resume;
   use action Prepare;
 
@@ -30,4 +32,15 @@ use etag
   use delete;
 
   use association _Travel { with draft; }
+  use association _BookSuppl { create; with draft; }
+}
+
+define behavior for ZRAP_CV_BOOK_SUP alias BookSuppl
+use etag
+{
+  use update;
+  use delete;
+
+  use association _Travel { with draft; }
+  use association _Booking { with draft; }
 }
