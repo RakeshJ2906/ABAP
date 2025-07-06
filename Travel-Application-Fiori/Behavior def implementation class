@@ -1,3 +1,135 @@
+CLASS lsc_zrap_iv_travel DEFINITION INHERITING FROM cl_abap_behavior_saver.
+
+  PROTECTED SECTION.
+
+    METHODS adjust_numbers REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_zrap_iv_travel IMPLEMENTATION.
+
+  METHOD adjust_numbers.
+
+    DATA: lv_travelid_max    TYPE /dmo/travel_id,
+          lv_bookid_max      TYPE /dmo/booking_id,
+          lv_booksupplid_max TYPE /dmo/booking_supplement_id,
+          nr_maintained      TYPE abap_bool VALUE abap_false.
+
+*_____________________________________ID Creation for Travel instance___________________________________________
+    IF mapped-travel IS NOT INITIAL.
+      DATA(lt_travel) = mapped-travel.
+      "Remove instance data which are already having defined travel id
+      DELETE lt_travel WHERE TravelId IS NOT INITIAL.
+    ENDIF.
+
+    IF lt_travel IS NOT INITIAL.
+      IF nr_maintained = abap_true.              "Number Range Maintained in the system..
+        TRY.
+            cl_numberrange_runtime=>number_get(
+              EXPORTING
+                nr_range_nr       = '01'
+                object            = '/DMO/TRV_M'
+                quantity          = CONV #( lines( lt_travel ) )
+              IMPORTING
+                number            = DATA(lv_avl_num)
+                returncode        = DATA(lv_returncode)
+                returned_quantity = DATA(lv_return_qty)
+            ).
+          CATCH cx_nr_object_not_found INTO DATA(le_notfound).
+          CATCH cx_number_ranges INTO DATA(le_nranges).
+            LOOP AT lt_travel INTO DATA(ls_data).
+              APPEND VALUE #( %key = ls_data-%key
+                              %msg = COND #( WHEN le_notfound IS NOT INITIAL
+                                             THEN le_notfound
+                                             WHEN le_nranges IS NOT INITIAL
+                                             THEN le_nranges ) ) TO reported-travel.
+            ENDLOOP.
+            EXIT.
+        ENDTRY.
+
+        ASSERT lv_return_qty = lines( lt_travel ).
+        lv_travelid_max = lv_avl_num - lv_return_qty.
+
+      ELSE.
+        "Get Max Travel Id from active table
+        SELECT SINGLE FROM zrap_tb_travel FIELDS MAX( travel_id ) INTO @lv_travelid_max.
+        "Get Max Travel Id from draft table
+        SELECT SINGLE FROM zrap_dtb_travel FIELDS MAX( travelid ) INTO @DATA(lv_dtravelid_max).
+        IF lv_dtravelid_max > lv_travelid_max.
+          lv_travelid_max = lv_dtravelid_max.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
+    LOOP AT lt_travel INTO DATA(ls_travel).
+      lv_travelid_max += 1.
+      APPEND VALUE #( %pid = ls_travel-%pid
+                      travelid = lv_travelid_max ) TO mapped-travel.
+    ENDLOOP.
+
+*_____________________________________ID Creation for Booking instance___________________________________________
+
+    IF mapped-booking IS NOT INITIAL.
+      DATA(lt_booking_instances) = mapped-booking.
+      "Remove instance data which are already having defined travel id
+      DELETE lt_booking_instances WHERE BookingId IS NOT INITIAL.
+    ENDIF.
+
+    IF lt_booking_instances IS NOT INITIAL.
+
+      READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+      ENTITY Travel BY \_Booking
+      FIELDS ( BookingId )
+      WITH VALUE #( FOR ls_instance IN lt_booking_instances
+                    ( TravelId = ls_instance-%tmp-TravelId ) )
+      RESULT DATA(lt_bookings).
+
+      lv_bookid_max = REDUCE #( INIT lv_max = CONV /dmo/booking_id( '0' )
+                                FOR ls_booking IN lt_bookings
+                                NEXT lv_max = ls_booking-BookingId ).
+
+      LOOP AT mapped-booking ASSIGNING FIELD-SYMBOL(<fs_booking>) WHERE BookingId IS INITIAL.
+        lv_bookid_max += 1.
+        <fs_booking>-TravelId = <fs_booking>-%tmp-TravelId.
+        <fs_booking>-BookingId = lv_bookid_max.
+      ENDLOOP.
+
+    ENDIF.
+
+*_________________________________ID Creation for Booking Supplement Instance_______________________________________
+
+    IF mapped-booksuppl IS NOT INITIAL.
+      DATA(lt_booksuppl_ins) = mapped-booksuppl.
+      "Remove instance data which are already having defined travel id
+      DELETE lt_booksuppl_ins WHERE BookingSupplementId IS NOT INITIAL.
+    ENDIF.
+
+    IF lt_booksuppl_ins IS NOT INITIAL.
+
+      READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+      ENTITY Booking BY \_BookSuppl
+      FIELDS ( BookingSupplementId )
+      WITH VALUE #( FOR ls_ins IN lt_booksuppl_ins
+                    ( TravelId = ls_ins-%tmp-TravelId
+                      BookingId = ls_ins-%tmp-BookingId ) )
+      RESULT DATA(lt_book_suppls).
+
+      lv_booksupplid_max = REDUCE #( INIT lv_max = CONV /dmo/booking_id( '0' )
+                                     FOR ls_booksuppl IN lt_book_suppls
+                                     NEXT lv_max = ls_booksuppl-BookingSupplementId ).
+
+      LOOP AT mapped-booksuppl ASSIGNING FIELD-SYMBOL(<fs_booksuupl>) WHERE BookingSupplementId IS INITIAL.
+        lv_booksupplid_max += 1.
+        <fs_booksuupl>-TravelId = <fs_booksuupl>-%tmp-TravelId.
+        <fs_booksuupl>-BookingId = <fs_booksuupl>-%tmp-BookingId.
+        <fs_booksuupl>-BookingSupplementId = lv_booksupplid_max.
+      ENDLOOP.
+
+    ENDIF.
+  ENDMETHOD.
+
+ENDCLASS.
+
 CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
 
@@ -8,27 +140,31 @@ CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
         rejected TYPE c LENGTH 1 VALUE 'X', "Cancelled
       END OF travel_status.
 
-    METHODS get_instance_features FOR INSTANCE FEATURES
-      IMPORTING keys REQUEST requested_features FOR Travel RESULT result.
-
     METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
       IMPORTING keys REQUEST requested_authorizations FOR Travel RESULT result.
+
+*    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+*      IMPORTING REQUEST requested_authorizations FOR Travel RESULT result.
+
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      IMPORTING keys REQUEST requested_features FOR Travel RESULT result.
 
     METHODS acceptTravel FOR MODIFY
       IMPORTING keys FOR ACTION Travel~acceptTravel RESULT result.
 
+    METHODS bookingfeeDiscount FOR MODIFY
+      IMPORTING keys FOR ACTION Travel~bookingfeeDiscount RESULT result.
+
+    METHODS recalcTotalPrice FOR MODIFY
+      IMPORTING keys FOR ACTION Travel~recalcTotalPrice.
+
     METHODS rejectTravel FOR MODIFY
       IMPORTING keys FOR ACTION Travel~rejectTravel RESULT result.
 
+    METHODS GetDefaultsForCreate FOR READ
+      IMPORTING keys FOR FUNCTION Travel~GetDefaultsForCreate RESULT result.
     METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
       IMPORTING keys FOR Travel~calculateTotalPrice.
-
-    METHODS setInitialStatus FOR DETERMINE ON MODIFY
-      IMPORTING keys FOR Travel~setInitialStatus.
-
-    METHODS calculateTravelID FOR DETERMINE ON SAVE
-      IMPORTING keys FOR Travel~calculateTravelID.
-
     METHODS validateAgency FOR VALIDATE ON SAVE
       IMPORTING keys FOR Travel~validateAgency.
 
@@ -38,14 +174,24 @@ CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
     METHODS validateDates FOR VALIDATE ON SAVE
       IMPORTING keys FOR Travel~validateDates.
 
-    METHODS recalcTotalPrice FOR MODIFY
-      IMPORTING keys FOR ACTION Travel~recalcTotalPrice.
-    METHODS bookingfeeDiscount FOR MODIFY
-      IMPORTING keys FOR ACTION Travel~bookingfeeDiscount RESULT result.
+ENDCLASS.
+
+CLASS lhc_booking DEFINITION INHERITING FROM cl_abap_behavior_handler.
+
+  PRIVATE SECTION.
+
+    METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Booking~calculateTotalPrice.
 
 ENDCLASS.
 
 CLASS lhc_Travel IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+*  METHOD get_global_authorizations.
+*  ENDMETHOD.
 
   METHOD get_instance_features.
 
@@ -75,9 +221,6 @@ CLASS lhc_Travel IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD get_instance_authorizations.
-  ENDMETHOD.
-
   METHOD acceptTravel.
 
     "Set the status
@@ -96,7 +239,7 @@ CLASS lhc_Travel IMPLEMENTATION.
     ALL FIELDS WITH CORRESPONDING #( keys )
     RESULT DATA(travels).
 
-    RESult = VALUE #( FOR travel IN travels
+    result = VALUE #( FOR travel IN travels
                       ( %tky = travel-%tky
                         %param = travel ) ).
 
@@ -123,244 +266,6 @@ CLASS lhc_Travel IMPLEMENTATION.
     result = VALUE #( FOR travel IN travels
                       ( %tky = travel-%tky
                         %param = travel ) ).
-
-  ENDMETHOD.
-
-  METHOD calculateTotalPrice.
-
-    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    EXECUTE recalcTotalPrice
-    FROM CORRESPONDING #( keys )
-    REPORTED DATA(updated_reported).
-
-    reported = CORRESPONDING #( DEEP updated_reported ).
-
-  ENDMETHOD.
-
-  METHOD setInitialStatus.
-
-    "Read Travel instance data
-    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    FIELDS ( TravelStatus ) WITH CORRESPONDING #( keys )
-    RESULT DATA(travels).
-
-    "Remove instance data which are already having defined status
-    DELETE travels WHERE TravelStatus IS NOT INITIAL.
-
-    "anything left?
-    CHECK travels IS NOT INITIAL.
-
-    "Set default travel status
-    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    UPDATE FIELDS ( TravelStatus )
-    WITH VALUE #( FOR travel IN travels
-                  ( %tky = travel-%tky
-                    TravelStatus = travel_status-open
-                    %control-TravelStatus = if_abap_behv=>mk-on ) )
-    REPORTED DATA(updated_reported).
-
-    reported = CORRESPONDING #( DEEP updated_reported ).
-
-  ENDMETHOD.
-
-  METHOD calculateTravelID.
-    "This method is not for calculation of unique Travel IDs, it will calculate only the next ID
-
-    "Read Travel instance data
-    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    FIELDS ( TravelID ) WITH CORRESPONDING #( keys )
-    RESULT DATA(travels).
-
-    "Remove instance data which are already having defined travel id
-    DELETE travels WHERE TravelID IS NOT INITIAL.
-
-    "anything left?
-    CHECK travels IS NOT INITIAL.
-
-    "select max Travel ID
-    SELECT SINGLE FROM zrap_tb_travel
-    FIELDS MAX( travel_id )
-    INTO @DATA(max_travelid).
-
-    "Set Travel ID
-    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    UPDATE FIELDS ( TravelID )
-    WITH VALUE #( FOR travel IN travels INDEX INTO i
-                  ( %tky = travel-%tky
-                    TravelID = max_travelid + i
-                    %control-TravelID = if_abap_behv=>mk-on ) )
-    REPORTED DATA(updated_reportted).
-
-    reported = CORRESPONDING #( DEEP updated_reportted ).
-
-  ENDMETHOD.
-
-  METHOD validateAgency.
-
-    "Read Travel instance data
-    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    FIELDS ( AgencyID ) WITH CORRESPONDING #( keys )
-    RESULT DATA(travels).
-
-    "extract distinct non-initial agency IDs
-    DATA: agencies TYPE SORTED TABLE OF /dmo/agency WITH UNIQUE KEY agency_id.
-    agencies = CORRESPONDING #( travels DISCARDING DUPLICATES MAPPING agency_id = AgencyID EXCEPT * ).
-    DELETE agencies WHERE agency_id IS INITIAL.
-
-    IF agencies IS NOT INITIAL.
-      "check agency ID in DB
-      SELECT FROM /dmo/agency FIELDS agency_id
-      FOR ALL ENTRIES IN @agencies
-      WHERE agency_id = @agencies-agency_id
-      INTO TABLE @DATA(agencies_db).
-    ENDIF.
-
-    "Raise message for non-existing and initial agency IDs
-    LOOP AT travels INTO DATA(ls_travels).
-      "clear state messages that might exist
-      APPEND VALUE #( %tky = ls_travels-%tky
-                      %state_area = 'VALIDATE_AGENCY' ) TO reported-travel.
-
-      IF ls_travels-AgencyID IS INITIAL OR NOT line_exists( agencies_db[ agency_id = ls_travels-AgencyID ] ).
-        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
-        APPEND VALUE #( %tky = ls_travels-%tky
-                        %state_area = 'VALIDATE_AGENCY'
-                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
-                                                      text = 'Agency ID is not available' )
-                        %element-AgencyID = if_abap_behv=>mk-on ) TO reported-travel.
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
-  METHOD validateCustomer.
-
-    "Read Travel instance data
-    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    FIELDS ( CustomerID ) WITH CORRESPONDING #( keys )
-    RESULT DATA(travels).
-
-    "extract distinct non-intial Customer IDs
-    DATA: customers TYPE SORTED TABLE OF /dmo/customer WITH UNIQUE KEY customer_id.
-    customers = CORRESPONDING #( travels DISCARDING DUPLICATES MAPPING customer_id = CustomerID EXCEPT * ).
-    DELETE customers WHERE customer_id IS INITIAL.
-
-    IF customers IS NOT INITIAL.
-      "check customer ID in DB
-      SELECT FROM /dmo/customer FIELDS customer_id
-      FOR ALL ENTRIES IN @customers
-      WHERE customer_id = @customers-customer_id
-      INTO TABLE @DATA(customers_db).
-    ENDIF.
-
-    "Raise message for non-existing and initial customer IDs
-    LOOP AT travels INTO DATA(ls_travels).
-      "clear state messages that might exist
-      APPEND VALUE #( %tky = ls_travels-%tky
-                      %state_area = 'VALIDATE_CUSTOMER' ) TO reported-travel.
-
-      IF ls_travels-CustomerID IS INITIAL OR NOT line_exists( customers_db[ customer_id = ls_travels-CustomerID ] ).
-        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
-        APPEND VALUE #( %tky = ls_travels-%tky
-                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
-                                                      text = 'Customer ID is not available' )
-                        %element-CustomerID = if_abap_behv=>mk-on ) TO reported-travel.
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
-  METHOD validateDates.
-
-    "Read Travel instance data
-    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    FIELDS ( BeginDate EndDate ) WITH CORRESPONDING #( keys )
-    RESULT DATA(travels).
-
-    "Raise message if validation fails
-    LOOP AT travels INTO DATA(ls_travels).
-      "clear state message that might exist
-      APPEND VALUE #( %tky = ls_travels-%tky
-                      %state_area = 'VALIDATE_DATES' ) TO reported-travel.
-
-      IF ls_travels-EndDate < ls_travels-BeginDate.
-        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
-        APPEND VALUE #( %tky = ls_travels-%tky
-                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
-                                                      text = 'End date is less than Begin date' )
-                        %element-BeginDate = if_abap_behv=>mk-on
-                        %element-EndDate = if_abap_behv=>mk-on ) TO reported-travel.
-      ELSEIF ls_travels-BeginDate < cl_abap_context_info=>get_system_date(  ).
-        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
-        APPEND VALUE #( %tky = ls_travels-%tky
-                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
-                                                      text = 'Begin date is less than Current date' )
-                        %element-BeginDate = if_abap_behv=>mk-on ) TO reported-travel.
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
-  METHOD recalcTotalPrice.
-
-    "Read Travel instance data
-    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    FIELDS ( BookingFee CurrencyCode )
-    WITH CORRESPONDING #( keys )
-    RESULT DATA(travels).
-
-    "Remove travel instance data where currency code is empty
-    DELETE travels WHERE CurrencyCode IS INITIAL.
-
-    "anything left?
-    CHECK travels IS NOT INITIAL.
-
-    LOOP AT travels ASSIGNING FIELD-SYMBOL(<fs_travel>).
-
-      "Capture Booking Fee
-      CLEAR: <fs_travel>-TotalPrice.
-      <fs_travel>-TotalPrice += <fs_travel>-BookingFee.
-
-      "Read Booking instance data
-      READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-      ENTITY Travel BY \_Booking
-      FIELDS ( FlightPrice CurrencyCode )
-      WITH VALUE #( ( %tky = <fs_travel>-%tky ) )
-      RESULT DATA(bookings).
-
-      "Capture Flight Price
-      LOOP AT bookings ASSIGNING FIELD-SYMBOL(<fs_booking>).
-        IF <fs_booking>-CurrencyCode = <fs_travel>-CurrencyCode.
-          <fs_travel>-TotalPrice += <fs_booking>-FlightPrice.
-        ELSE.
-          /dmo/cl_flight_amdp=>convert_currency(
-            EXPORTING
-              iv_amount               = <fs_booking>-FlightPrice
-              iv_currency_code_source = <fs_booking>-CurrencyCode
-              iv_currency_code_target = <fs_travel>-CurrencyCode
-              iv_exchange_rate_date   = cl_abap_context_info=>get_system_date(  )
-            IMPORTING
-              ev_amount               = DATA(lv_conv_amount)
-          ).
-          <fs_travel>-TotalPrice += lv_conv_amount.
-        ENDIF.
-      ENDLOOP.
-
-    ENDLOOP.
-
-    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Travel
-    UPDATE FIELDS ( TotalPrice )
-    WITH CORRESPONDING #( travels ).
 
   ENDMETHOD.
 
@@ -417,76 +322,216 @@ CLASS lhc_Travel IMPLEMENTATION.
 
   ENDMETHOD.
 
-ENDCLASS.
+  METHOD recalcTotalPrice.
 
-CLASS lhc_Booking DEFINITION INHERITING FROM cl_abap_behavior_handler.
-  PRIVATE SECTION.
-
-    METHODS calculateBookingID FOR DETERMINE ON MODIFY
-      IMPORTING keys FOR Booking~calculateBookingID.
-
-    METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
-      IMPORTING keys FOR Booking~calculateTotalPrice.
-
-ENDCLASS.
-
-CLASS lhc_Booking IMPLEMENTATION.
-
-  METHOD calculateBookingID.
-
-    DATA: updated_data TYPE TABLE FOR UPDATE zrap_iv_travel\\Booking.
-
-    "Get corresponding Travel instance data
+    "Read Travel instance data
     READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Booking BY \_Travel
-    FIELDS ( TravelUUID ) WITH CORRESPONDING #( keys )
+    ENTITY Travel
+    FIELDS ( BookingFee CurrencyCode )
+    WITH CORRESPONDING #( keys )
     RESULT DATA(travels).
 
-    LOOP AT travels INTO DATA(ls_travels).
+    "Remove travel instance data where currency code is empty
+    DELETE travels WHERE CurrencyCode IS INITIAL.
 
-      "Get corresponding Booking instance data
+    "anything left?
+    CHECK travels IS NOT INITIAL.
+
+    LOOP AT travels ASSIGNING FIELD-SYMBOL(<fs_travel>).
+
+      "Capture Booking Fee
+      CLEAR: <fs_travel>-TotalPrice.
+      <fs_travel>-TotalPrice += <fs_travel>-BookingFee.
+
+      "Read Booking instance data
       READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-      ENTITY TraveL BY \_Booking
-      FIELDS ( BookingID ) WITH VALUE #( ( %tky = ls_travels-%tky ) )
+      ENTITY Travel BY \_Booking
+      FIELDS ( FlightPrice CurrencyCode )
+      WITH VALUE #( ( %tky = <fs_travel>-%tky ) )
       RESULT DATA(bookings).
 
-      DATA(bookings_temp) = bookings[].
+      "Capture Flight Price
+      LOOP AT bookings ASSIGNING FIELD-SYMBOL(<fs_booking>).
+        IF <fs_booking>-CurrencyCode = <fs_travel>-CurrencyCode.
+          <fs_travel>-TotalPrice += <fs_booking>-FlightPrice.
+        ELSE.
 
-      "sort results
-      SORT bookings BY BookingID DESCENDING.
+*          /dmo/cl_flight_amdp=>convert_currency(
+*            EXPORTING
+*              iv_amount               = <fs_booking>-FlightPrice
+*              iv_currency_code_source = <fs_booking>-CurrencyCode
+*              iv_currency_code_target = <fs_travel>-CurrencyCode
+*              iv_exchange_rate_date   = cl_abap_context_info=>get_system_date(  )
+*            IMPORTING
+*              ev_amount               = DATA(lv_conv_amount)
+*          ).
+*          <fs_travel>-TotalPrice += lv_conv_amount.
 
-      "Get Max Booking ID
-      IF bookings[] is not initial.
-        DATA(lv_max_book_id) = bookings[ 1 ]-BookingID.
-      ELSE.
-        lv_max_book_id = 0.
-      ENDIF.
+          DATA(lv_curr_date) = cl_abap_context_info=>get_system_date( ).
+          SELECT SINGLE FROM ztb_curr_conv
+           FIELDS rate
+           WHERE source_currency = @<fs_booking>-CurrencyCode
+           AND target_currency = @<fs_travel>-CurrencyCode
+           AND valid_from <= @lv_curr_date
+           AND valid_to >= @lv_curr_date INTO @DATA(lv_rate).
 
-      "Fill a table for all bookings that do not have Booking ID
-      LOOP AT bookings_temp INTO DATA(ls_bookings) WHERE BookingID IS INITIAL.
-        APPEND VALUE #( %tky = ls_bookings-%tky
-                        BookingID = lv_max_book_id + 1 ) TO updated_data.
-        lv_max_book_id += 1.
+          IF sy-subrc = 0.
+            DATA(lv_conv_amount) = <fs_booking>-FlightPrice * lv_rate.
+            <fs_travel>-TotalPrice += lv_conv_amount.
+          ELSE.
+            " Handle missing rate
+          ENDIF.
+        ENDIF.
       ENDLOOP.
 
     ENDLOOP.
 
-    "Update Booking ID
     MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
-    ENTITY Booking
-    UPDATE FIELDS ( BookingID ) WITH updated_data
-    REPORTED DATA(updated_reported).
+    ENTITY Travel
+    UPDATE FIELDS ( TotalPrice )
+    WITH CORRESPONDING #( travels ).
+
+  ENDMETHOD.
+
+  METHOD GetDefaultsForCreate.
+    result = VALUE #( FOR key IN keys (
+                                       %cid = key-%cid
+                                       %param = VALUE #( CurrencyCode = 'INR'
+                                                         TravelStatus = 'O' )
+                                      ) ).
+  ENDMETHOD.
+
+  METHOD calculateTotalPrice.
+
+    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
+      ENTITY Travel
+      EXECUTE recalcTotalPrice
+      FROM CORRESPONDING #( keys )
+      REPORTED DATA(updated_reported).
 
     reported = CORRESPONDING #( DEEP updated_reported ).
 
   ENDMETHOD.
+
+  METHOD validateAgency.
+
+    "Read Travel instance data
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( AgencyId ) WITH CORRESPONDING #( keys )
+    RESULT DATA(travels).
+
+    "extract distinct non-initial Agency Id(s)
+    DATA: agencies TYPE SORTED TABLE OF /dmo/agency WITH UNIQUE KEY agency_id.
+    agencies = CORRESPONDING #( travels DISCARDING DUPLICATES MAPPING agency_id = AgencyId EXCEPT * ).
+    DELETE agencies WHERE agency_id IS INITIAL.
+
+    IF agencies IS NOT INITIAL.
+      "check Agency Id{s) in DB
+      SELECT FROM /dmo/agency FIELDS agency_id
+      FOR ALL ENTRIES IN @agencies
+      WHERE agency_id = @agencies-agency_id
+      INTO TABLE @DATA(agencies_db).
+    ENDIF.
+
+    "Raise message for non-existing and initial Agency Id(s)
+    LOOP AT travels INTO DATA(ls_travels).
+      "clear state messages that might exist
+      APPEND VALUE #( %tky = ls_travels-%tky
+                      %state_area = 'VALIDATE_AGENCY' ) TO reported-travel.
+
+      IF ls_travels-AgencyID IS INITIAL OR NOT line_exists( agencies_db[ agency_id = ls_travels-AgencyID ] ).
+        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
+        APPEND VALUE #( %tky = ls_travels-%tky
+                        %state_area = 'VALIDATE_AGENCY'
+                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
+                                                      text = 'Agency Id is not available' )
+                        %element-AgencyID = if_abap_behv=>mk-on ) TO reported-travel.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validateCustomer.
+
+    "Read Travel instance data
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( CustomerID ) WITH CORRESPONDING #( keys )
+    RESULT DATA(travels).
+
+    "extract distinct non-intial Customer Id(s)
+    DATA: customers TYPE SORTED TABLE OF /dmo/customer WITH UNIQUE KEY customer_id.
+    customers = CORRESPONDING #( travels DISCARDING DUPLICATES MAPPING customer_id = CustomerID EXCEPT * ).
+    DELETE customers WHERE customer_id IS INITIAL.
+
+    IF customers IS NOT INITIAL.
+      "check Customer Id(s) in DB
+      SELECT FROM /dmo/customer FIELDS customer_id
+      FOR ALL ENTRIES IN @customers
+      WHERE customer_id = @customers-customer_id
+      INTO TABLE @DATA(customers_db).
+    ENDIF.
+
+    "Raise message for non-existing and initial Customer Id(s)
+    LOOP AT travels INTO DATA(ls_travels).
+      "clear state messages that might exist
+      APPEND VALUE #( %tky = ls_travels-%tky
+                      %state_area = 'VALIDATE_CUSTOMER' ) TO reported-travel.
+
+      IF ls_travels-CustomerID IS INITIAL OR NOT line_exists( customers_db[ customer_id = ls_travels-CustomerID ] ).
+        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
+        APPEND VALUE #( %tky = ls_travels-%tky
+                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
+                                                      text = 'Customer Id is not available' )
+                        %element-CustomerID = if_abap_behv=>mk-on ) TO reported-travel.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validateDates.
+
+    "Read Travel instance data
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( BeginDate EndDate ) WITH CORRESPONDING #( keys )
+    RESULT DATA(travels).
+
+    "Raise message if validation fails
+    LOOP AT travels INTO DATA(ls_travels).
+      "clear state message that might exist
+      APPEND VALUE #( %tky = ls_travels-%tky
+                      %state_area = 'VALIDATE_DATES' ) TO reported-travel.
+
+      IF ls_travels-EndDate < ls_travels-BeginDate.
+        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
+        APPEND VALUE #( %tky = ls_travels-%tky
+                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
+                                                      text = 'End date is less than Begin date' )
+                        %element-BeginDate = if_abap_behv=>mk-on
+                        %element-EndDate = if_abap_behv=>mk-on ) TO reported-travel.
+      ELSEIF ls_travels-BeginDate < cl_abap_context_info=>get_system_date(  ).
+        APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
+        APPEND VALUE #( %tky = ls_travels-%tky
+                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
+                                                      text = 'Begin date is less than Current date' )
+                        %element-BeginDate = if_abap_behv=>mk-on ) TO reported-travel.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lhc_booking IMPLEMENTATION.
 
   METHOD calculateTotalPrice.
 
     "Get corresponding Travel instance data
     READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
     ENTITY Booking BY \_Travel
-    FIELDS ( TravelUUID ) WITH CORRESPONDING #( keys )
+    ALL FIELDS WITH CORRESPONDING #( keys )
     RESULT DATA(travels)
     FAILED DATA(failed).
 
