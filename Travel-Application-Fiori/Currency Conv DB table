@@ -1,0 +1,15 @@
+@EndUserText.label : 'Table for Currency Conversions'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table ztb_curr_conv {
+
+  key client          : mandt not null;
+  key source_currency : /dmo/currency_code not null;
+  key target_currency : /dmo/currency_code not null;
+  rate                : /dmo/price;
+  valid_from          : abap.dats;
+  valid_to            : abap.dats;
+
+}
