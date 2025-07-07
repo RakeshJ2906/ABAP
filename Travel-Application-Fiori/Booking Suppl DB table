@@ -1,0 +1,20 @@
+@EndUserText.label : 'Table for Booking Supplement details'
+@AbapCatalog.enhancement.category : #EXTENSIBLE_ANY
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zrap_tb_book_sup {
+
+  key client                : abap.clnt not null;
+  key travel_id             : /dmo/travel_id not null;
+  key booking_id            : /dmo/booking_id not null;
+  key booking_supplement_id : /dmo/booking_supplement_id not null;
+  supplement_id             : /dmo/supplement_id;
+  @Semantics.amount.currencyCode : 'zrap_tb_book_sup.currency_code'
+  price                     : /dmo/supplement_price;
+  currency_code             : /dmo/currency_code;
+  created_by                : syuname;
+  last_changed_by           : syuname;
+  local_last_changed_at     : timestampl;
+
+}
