@@ -1,56 +1,66 @@
 @Metadata.layer: #CORE
-@UI: {
-  headerInfo: { typeName: 'Booking',
-                typeNamePlural: 'Bookings',
-                title: { type: #STANDARD, value: 'BookingID' }
-              },
-  presentationVariant: [{ sortOrder: [{ by: 'BookingID', direction:  #ASC }] }] }
+@Search.searchable: true
+@UI: { headerInfo: { typeName: 'Booking',
+                     typeNamePlural: 'Bookings',
+                     title: { type: #STANDARD, label: 'Booking', value: 'BookingId' }
+                   },
+       presentationVariant: [{ sortOrder: [{ by: 'BookingId', direction:  #ASC }] }] }
+
 annotate view ZRAP_CV_BOOKING with
 {
-  @UI.facet: [ { id:          'Booking',
-               purpose:       #STANDARD,
-               type:          #IDENTIFICATION_REFERENCE,
-               label:         'Booking',
-               position:      10 }  ]
+  @UI.facet: [
+              { label: 'Booking',
+                id: 'Booking',
+                purpose: #STANDARD,
+                type: #IDENTIFICATION_REFERENCE,
+                position: 10
+              },
+              
+              { label: 'Booking Supplements',
+                id: 'BookingSuppl',
+                purpose: #STANDARD,
+                type: #LINEITEM_REFERENCE,
+                position: 20,
+                targetElement: '_BookSuppl'
+              } ]
 
-  //@UI: { identification: [ { position: 10, label: 'Booking UUID'  } ] }
-  @UI.hidden: true
-  BookingUUID;
-
-  @UI.hidden: true
-  TravelUUID;
-  
-  @UI: { lineItem:       [ { position: 10 } ],
-         identification: [ { position: 20 } ] }
-  BookingID;
-
-  @UI: { lineItem:       [ { position: 20 } ],
-         identification: [ { position: 30 } ] }
+  // TravelId;
+  @UI: { lineItem: [{ position: 10 }],
+         identification: [{ position: 10 }] }
+  @Search.defaultSearchElement: true
+  BookingId;
+  @UI: { lineItem: [{ position: 20 }],
+         identification: [{ position: 30 }] }
   BookingDate;
-
-  @UI: { lineItem:       [ { position: 30, label: 'Customer' } ],
-         identification: [ { position: 40 } ] }
-  CustomerID;
-
-  @UI: { lineItem:       [ { position: 40, label: 'Airline' } ],
-         identification: [ { position: 50 } ] }
-  CarrierID;
-
-  @UI: { lineItem:       [ { position: 50 } ],
-         identification: [ { position: 60 } ] }
-  ConnectionID;
-
-  @UI: { lineItem:       [ { position: 60 } ],
-         identification: [ { position: 70 } ] }
+  @UI: { lineItem: [{ position: 30 }],
+         identification: [{ position: 30 }] }
+  @Search.defaultSearchElement: true
+  CustomerId;
+  @UI: { lineItem: [{ position: 40 }],
+         identification: [{ position: 40 }] }
+  CarrierId;
+  @UI: { lineItem: [{ position: 50 }],
+         identification: [{ position: 50 }] }
+  ConnectionId;
+  @UI: { lineItem: [{ position: 60 }],
+         identification: [{ position: 60 }] }
   FlightDate;
-
-  @UI: { lineItem:       [ { position: 70 } ],
-         identification: [ { position: 80 } ] }
+  @UI: { lineItem: [{ position: 70 }],
+         identification: [{ position: 70 }] }
   FlightPrice;
+  @UI: { lineItem: [{ position: 80 }],
+         identification: [{ position: 80 }] }
+  @UI.textArrangement: #TEXT_ONLY
+  BookingStatus;
 
+  @UI.hidden: true
+  CreatedBy;
+  @UI.hidden: true
+  LastChangedBy;
   @UI.hidden: true
   LocalLastChangedAt;
-  
+
+  /* Associations */
   @UI.lineItem: [{ position: 05, label: ' ', type: #WITH_URL, value: '_AirlineURL.Url' }]
   _AirlineURL;
 
