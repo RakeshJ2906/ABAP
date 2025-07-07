@@ -1,0 +1,13 @@
+@EndUserText.label : 'Table for URL'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #ALLOWED
+define table zrap_tb_url {
+
+  key client     : abap.clnt not null;
+  key carrier_id : /dmo/carrier_id not null;
+  name           : /dmo/carrier_name;
+  url            : /dmo/carrier_pic;
+
+}
