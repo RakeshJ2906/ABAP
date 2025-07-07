@@ -31,6 +31,8 @@ use etag
   use update;
   use delete;
 
+  use function GetDefaultsForBookSuppl;
+
   use association _Travel { with draft; }
   use association _BookSuppl { create; with draft; }
 }
