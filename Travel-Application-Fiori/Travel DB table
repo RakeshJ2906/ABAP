@@ -6,8 +6,7 @@
 define table zrap_tb_travel {
 
   key client            : mandt not null;
-  key travel_uuid       : sysuuid_x16 not null;
-  travel_id             : /dmo/travel_id;
+  key travel_id         : /dmo/travel_id not null;
   agency_id             : /dmo/agency_id;
   customer_id           : /dmo/customer_id;
   begin_date            : /dmo/begin_date;
