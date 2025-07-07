@@ -182,6 +182,8 @@ CLASS lhc_booking DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
       IMPORTING keys FOR Booking~calculateTotalPrice.
+    METHODS GetDefaultsForBookSuppl FOR READ
+      IMPORTING keys FOR FUNCTION Booking~GetDefaultsForBookSuppl RESULT result.
 
 ENDCLASS.
 
@@ -544,6 +546,14 @@ CLASS lhc_booking IMPLEMENTATION.
 
     reported = CORRESPONDING #( DEEP updated_reported ).
 
+  ENDMETHOD.
+
+  METHOD GetDefaultsForBookSuppl.
+
+  result = VALUE #( FOR key IN keys (
+                                      %pid = key-%pid
+                                      %param = VALUE #( price = ' ' )
+                                    ) ).
   ENDMETHOD.
 
 ENDCLASS.
