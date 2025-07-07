@@ -1,14 +1,13 @@
+@EndUserText.label : 'Table for Booking details'
 @AbapCatalog.enhancement.category : #EXTENSIBLE_ANY
 @AbapCatalog.tableCategory : #TRANSPARENT
 @AbapCatalog.deliveryClass : #A
 @AbapCatalog.dataMaintenance : #RESTRICTED
-
 define table zrap_tb_booking {
 
   key client            : mandt not null;
-  key booking_uuid      : sysuuid_x16 not null;
-  travel_uuid           : sysuuid_x16 not null;
-  booking_id            : /dmo/booking_id;
+  key travel_id         : /dmo/travel_id not null;
+  key booking_id        : /dmo/booking_id not null;
   booking_date          : /dmo/booking_date;
   customer_id           : /dmo/customer_id;
   carrier_id            : /dmo/carrier_id;
@@ -17,6 +16,7 @@ define table zrap_tb_booking {
   @Semantics.amount.currencyCode : 'zrap_tb_booking.currency_code'
   flight_price          : /dmo/flight_price;
   currency_code         : /dmo/currency_code;
+  booking_status        : /dmo/booking_status;
   created_by            : syuname;
   last_changed_by       : syuname;
   local_last_changed_at : timestampl;
