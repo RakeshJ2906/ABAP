@@ -82,7 +82,7 @@ extensible
   update;
   delete;
   association _Travel { with draft; }
-  association _BookSuppl { create; with draft; }
+  association _BookSuppl { create{ default function GetDefaultsForBookSuppl; } with draft; }
 
   field ( readonly ) TravelId, BookingId;
   field ( readonly ) CreatedBy, LastChangedBy, LocalLastChangedAt;
