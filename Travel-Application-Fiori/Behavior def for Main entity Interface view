@@ -16,15 +16,17 @@ extensible
   create { default function GetDefaultsForCreate; }
   update;
   delete;
-  association _Booking { create; with draft; }
+  association _Booking { create ( features : instance ); with draft; }
 
   field ( readonly ) TravelId;
   field ( readonly ) LastChangedAt, LastChangedBy, CreatedAt, CreatedBy, LocalLastChangedAt;
-  field ( mandatory ) AgencyID, CustomerID;
+  //field ( mandatory : create, readonly : update ) AgencyID, CustomerID;
+  field (mandatory ) AgencyId, CustomerId;
 
   action ( features : instance ) acceptTravel result [1] $self;
   action ( features : instance ) rejectTravel result [1] $self;
   action ( features : instance ) bookingfeeDiscount parameter /dmo/a_travel_discount result [1] $self;
+  factory action copyRecord [1];
   internal action recalcTotalPrice;
 
   //    determination setInitialStatus on modify { create; }
@@ -36,7 +38,7 @@ extensible
 
   validation validateAgency on save { field AgencyId; create; update; }
   validation validateCustomer on save { field CustomerId; create; update; }
-  validation validateDates on save { field BeginDate, EndDate; create; update; }
+  validation validateDates on save { field BeginDate, EndDate; create; }
 
   draft action Activate optimized;
   draft action Discard;
@@ -82,15 +84,17 @@ extensible
   update;
   delete;
   association _Travel { with draft; }
-  association _BookSuppl { create{ default function GetDefaultsForBookSuppl; } with draft; }
+  association _BookSuppl { create( features : instance );  with draft; }
 
   field ( readonly ) TravelId, BookingId;
   field ( readonly ) CreatedBy, LastChangedBy, LocalLastChangedAt;
+  field ( mandatory : create ) CustomerId, CarrierId, ConnectionId, BookingStatus;
 
   determination calculateTotalPrice on modify { field FlightPrice, CurrencyCode; }
+
   side effects
-  { field FlightPrice affects field _Travel.TotalPrice;
-    field CurrencyCode affects field _Travel.TotalPrice; }
+   { field FlightPrice affects field _Travel.TotalPrice;
+     field CurrencyCode affects field _Travel.TotalPrice; }
 
   mapping for zrap_tb_booking corresponding extensible
     {
@@ -109,35 +113,42 @@ extensible
       LocalLastChangedAt = local_last_changed_at;
     }
 
-}
+  }
 
-define behavior for ZRAP_IV_BOOK_SUP alias BookSuppl
-persistent table zrap_tb_book_sup
-draft table zrap_dtb_book_sp
-lock dependent by _Travel
-authorization dependent by _Travel
-etag master LocalLastChangedAt
-late numbering
-extensible
-{
-  update;
-  delete;
-  association _Travel { with draft; }
-  association _Booking { with draft; }
+  define behavior for ZRAP_IV_BOOK_SUP alias BookSuppl
+  persistent table zrap_tb_book_sup
+  draft table zrap_dtb_book_sp
+  lock dependent by _Travel
+  authorization dependent by _Travel
+  etag master LocalLastChangedAt
+  late numbering
+  extensible
+  {
+    update;
+    delete;
+    association _Travel { with draft; }
+    association _Booking { with draft; }
 
-  field ( readonly ) TravelId, BookingId, BookingSupplementId;
-  field ( readonly ) CreatedBy, LastChangedBy, LocalLastChangedAt;
+    field ( readonly ) TravelId, BookingId, BookingSupplementId;
+    field ( readonly ) CreatedBy, LastChangedBy, LocalLastChangedAt;
+    field(mandatory : create) SupplementId, Price;
 
-  mapping for zrap_tb_book_sup corresponding extensible
-    {
-      TravelId            = travel_id;
-      BookingId           = booking_id;
-      BookingSupplementId = booking_supplement_id;
-      SupplementId        = supplement_id;
-      Price               = price;
-      CurrencyCode        = currency_code;
-      CreatedBy           = created_by;
-      LastChangedBy       = last_changed_by;
-      LocalLastChangedAt  = local_last_changed_at;
-    }
-}
+    determination calculateTotalPrice on modify { field Price, CurrencyCode; }
+
+    side effects
+   { field Price affects field _Travel.TotalPrice;
+     field CurrencyCode affects field _Travel.TotalPrice; }
+
+    mapping for zrap_tb_book_sup corresponding extensible
+      {
+        TravelId            = travel_id;
+        BookingId           = booking_id;
+        BookingSupplementId = booking_supplement_id;
+        SupplementId        = supplement_id;
+        Price               = price;
+        CurrencyCode        = currency_code;
+        CreatedBy           = created_by;
+        LastChangedBy       = last_changed_by;
+        LocalLastChangedAt  = local_last_changed_at;
+      }
+  }
