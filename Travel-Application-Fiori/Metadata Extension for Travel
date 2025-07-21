@@ -108,7 +108,8 @@ annotate view ZRAP_CV_TRAVEL with
   Description;
   @UI: { lineItem: [ { position: 70, criticality: 'StatusCriticality', criticalityRepresentation: #WITH_ICON },
                      { type: #FOR_ACTION, dataAction: 'acceptTravel', label: 'Accept Travel', position: 10 },
-                     { type: #FOR_ACTION, dataAction: 'rejectTravel', label: 'Reject Travel', position: 20 }
+                     { type: #FOR_ACTION, dataAction: 'rejectTravel', label: 'Reject Travel', position: 20 },
+                     { type: #FOR_ACTION, dataAction: 'copyRecord', label: 'Copy Travel', position: 30 }
                    ],
          identification: [
                            { type: #FOR_ACTION_GROUP, label: 'Change Status', actionGroupId: 'menu-ChangeStatus' },
