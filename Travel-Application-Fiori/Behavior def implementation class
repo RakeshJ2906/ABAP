@@ -15,7 +15,8 @@ CLASS lsc_zrap_iv_travel IMPLEMENTATION.
           lv_booksupplid_max TYPE /dmo/booking_supplement_id,
           nr_maintained      TYPE abap_bool VALUE abap_false.
 
-*_____________________________________ID Creation for Travel instance___________________________________________
+*************************************ID Creation for Travel instance******************************************
+
     IF mapped-travel IS NOT INITIAL.
       DATA(lt_travel) = mapped-travel.
       "Remove instance data which are already having defined travel id
@@ -67,7 +68,7 @@ CLASS lsc_zrap_iv_travel IMPLEMENTATION.
                       travelid = lv_travelid_max ) TO mapped-travel.
     ENDLOOP.
 
-*_____________________________________ID Creation for Booking instance___________________________________________
+*************************************ID Creation for Booking instance******************************************
 
     IF mapped-booking IS NOT INITIAL.
       DATA(lt_booking_instances) = mapped-booking.
@@ -96,7 +97,7 @@ CLASS lsc_zrap_iv_travel IMPLEMENTATION.
 
     ENDIF.
 
-*_________________________________ID Creation for Booking Supplement Instance_______________________________________
+*************************************ID Creation for Book Suppl instance******************************************
 
     IF mapped-booksuppl IS NOT INITIAL.
       DATA(lt_booksuppl_ins) = mapped-booksuppl.
@@ -129,6 +130,8 @@ CLASS lsc_zrap_iv_travel IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+
+******Behavior Class Definitions******
 
 CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
@@ -173,6 +176,8 @@ CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS validateDates FOR VALIDATE ON SAVE
       IMPORTING keys FOR Travel~validateDates.
+    METHODS copyRecord FOR MODIFY
+      IMPORTING keys FOR ACTION Travel~copyRecord.
 
 ENDCLASS.
 
@@ -182,10 +187,21 @@ CLASS lhc_booking DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
       IMPORTING keys FOR Booking~calculateTotalPrice.
-    METHODS GetDefaultsForBookSuppl FOR READ
-      IMPORTING keys FOR FUNCTION Booking~GetDefaultsForBookSuppl RESULT result.
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      IMPORTING keys REQUEST requested_features FOR Booking RESULT result.
 
 ENDCLASS.
+
+CLASS lhc_booksuppl DEFINITION INHERITING FROM cl_abap_behavior_handler.
+
+  PRIVATE SECTION.
+
+    METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR BookSuppl~calculateTotalPrice.
+
+ENDCLASS.
+
+******Behavior Class Implementations******
 
 CLASS lhc_Travel IMPLEMENTATION.
 
@@ -218,7 +234,8 @@ CLASS lhc_Travel IMPLEMENTATION.
                       IN ( %tky = travel-%tky
                            %action-acceptTravel = ls_accepted
                            %action-rejectTravel = ls_rejected
-                           %action-bookingfeeDiscount = ls_discount )
+                           %action-bookingfeeDiscount = ls_discount
+                           %assoc-_Booking = ls_rejected )
                     ).
 
   ENDMETHOD.
@@ -269,6 +286,90 @@ CLASS lhc_Travel IMPLEMENTATION.
                       ( %tky = travel-%tky
                         %param = travel ) ).
 
+  ENDMETHOD.
+
+  METHOD copyRecord.
+
+    DATA: lt_travel        TYPE TABLE FOR CREATE zrap_iv_travel,
+          lt_booking_cba   TYPE TABLE FOR CREATE zrap_iv_travel\_Booking,
+          lt_booksuppl_cba TYPE TABLE FOR CREATE zrap_iv_booking\_BookSuppl.
+
+    "Consider the instances only when they have CID..
+    DATA(ls_without_cid) = VALUE #( keys[ %cid = space ] OPTIONAL ).
+    ASSERT ls_without_cid IS INITIAL.
+
+    "Get Corresponding Travel instance data..
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_travel_c)
+    FAILED failed.
+
+    "Get Corresponding Booking instance data..
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel BY \_Booking
+    ALL FIELDS WITH CORRESPONDING #( lt_travel_c )
+    RESULT DATA(lt_bookings_c).
+
+    "Get Corresponding Booking Supplement instance data..
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Booking BY \_BookSuppl
+    ALL FIELDS WITH CORRESPONDING #( lt_bookings_c )
+    RESULT DATA(lt_booksuppl_c).
+
+    LOOP AT lt_travel_c INTO DATA(ls_travel).
+
+      "Fill Travel instance data..
+      APPEND VALUE #( %cid = keys[ KEY entity TravelId = ls_travel-TravelId ]-%cid
+                      %data = CORRESPONDING #( ls_travel EXCEPT TravelId ) )
+        TO lt_travel ASSIGNING FIELD-SYMBOL(<fs_travel>).
+      <fs_travel>-BeginDate = cl_abap_context_info=>get_system_date( ).
+      <fs_travel>-EndDate = cl_abap_context_info=>get_system_date( ) + 30.
+      <fs_travel>-TravelStatus = 'O'.
+
+      "Fill Booking details..
+      APPEND VALUE #( %cid_ref = <fs_travel>-%cid ) TO lt_booking_cba ASSIGNING FIELD-SYMBOL(<fs_booking>).
+      LOOP AT lt_bookings_c INTO DATA(ls_booking) USING KEY entity WHERE TravelId = ls_travel-TravelId.
+
+        APPEND VALUE #( %cid = <fs_travel>-%cid && ls_booking-BookingId
+                        %data = CORRESPONDING #( ls_booking EXCEPT TravelId ) )
+          TO <fs_booking>-%target ASSIGNING FIELD-SYMBOL(<fs_booking_n>).
+        <fs_booking_n>-BookingStatus = 'N'.
+
+        "Fill Booking Supplement details..
+        APPEND VALUE #( %cid_ref = <fs_booking_n>-%cid ) TO lt_booksuppl_cba ASSIGNING FIELD-SYMBOL(<fs_booksuupl>).
+        LOOP AT lt_booksuppl_c INTO DATA(ls_suppl) USING KEY entity WHERE TravelId = ls_travel-TravelId
+                                                                    AND BookingId = ls_booking-BookingId.
+          APPEND VALUE #( %cid = <fs_travel>-%cid && ls_booking-BookingId && ls_suppl-BookingSupplementId
+                          %data = CORRESPONDING #( ls_suppl EXCEPT TravelId BookingId ) )
+            TO <fs_booksuupl>-%target.
+        ENDLOOP.
+
+      ENDLOOP.
+
+    ENDLOOP.
+
+    "Create Record..
+    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel
+    CREATE AUTO FILL CID
+    FIELDS ( AgencyId CustomerId BeginDate EndDate BookingFee TotalPrice CurrencyCode TravelStatus Description )
+    WITH lt_travel
+    ENTITY Travel
+    CREATE BY \_Booking AUTO FILL CID
+    FIELDS ( BookingId BookingDate CustomerId CarrierId ConnectionId FlightDate FlightPrice CurrencyCode BookingStatus )
+    WITH lt_booking_cba
+    ENTITY Booking
+    CREATE BY \_BookSuppl AUTO FILL CID
+    FIELDS ( BookingSupplementId SupplementId Price CurrencyCode )
+    WITH lt_booksuppl_cba
+    MAPPED DATA(lt_mapped)
+    FAILED DATA(lt_failed)
+    REPORTED DATA(lt_reported).
+
+    mapped = CORRESPONDING #( DEEP lt_mapped ).
+    failed = CORRESPONDING #( DEEP lt_failed ).
+    reported = CORRESPONDING #( DEEP lt_reported ).
   ENDMETHOD.
 
   METHOD bookingfeeDiscount.
@@ -326,6 +427,8 @@ CLASS lhc_Travel IMPLEMENTATION.
 
   METHOD recalcTotalPrice.
 
+    DATA(lv_curr_date) = cl_abap_context_info=>get_system_date( ).
+
     "Read Travel instance data
     READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
     ENTITY Travel
@@ -333,8 +436,24 @@ CLASS lhc_Travel IMPLEMENTATION.
     WITH CORRESPONDING #( keys )
     RESULT DATA(travels).
 
-    "Remove travel instance data where currency code is empty
+    "Read Booking instance data
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel BY \_Booking
+    FIELDS ( FlightPrice CurrencyCode )
+    WITH CORRESPONDING #( travels )
+    RESULT DATA(bookings).
+
+    "Read Booking Supplement instance data
+    READ ENTITIES OF ZRAP_IV_TRAVEl IN LOCAL MODE
+    ENTITY Booking BY \_BookSuppl
+    FIELDS ( Price CurrencyCode )
+    WITH CORRESPONDING #( bookings )
+    RESULT DATA(booksuppls).
+
+    "Remove instance data where currency code is empty
     DELETE travels WHERE CurrencyCode IS INITIAL.
+    DELETE bookings WHERE CurrencyCode IS INITIAL.
+    DELETE booksuppls WHERE CurrencyCode IS INITIAL.
 
     "anything left?
     CHECK travels IS NOT INITIAL.
@@ -344,13 +463,6 @@ CLASS lhc_Travel IMPLEMENTATION.
       "Capture Booking Fee
       CLEAR: <fs_travel>-TotalPrice.
       <fs_travel>-TotalPrice += <fs_travel>-BookingFee.
-
-      "Read Booking instance data
-      READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
-      ENTITY Travel BY \_Booking
-      FIELDS ( FlightPrice CurrencyCode )
-      WITH VALUE #( ( %tky = <fs_travel>-%tky ) )
-      RESULT DATA(bookings).
 
       "Capture Flight Price
       LOOP AT bookings ASSIGNING FIELD-SYMBOL(<fs_booking>).
@@ -369,20 +481,39 @@ CLASS lhc_Travel IMPLEMENTATION.
 *          ).
 *          <fs_travel>-TotalPrice += lv_conv_amount.
 
-          DATA(lv_curr_date) = cl_abap_context_info=>get_system_date( ).
-          SELECT SINGLE FROM ztb_curr_conv
-           FIELDS rate
-           WHERE source_currency = @<fs_booking>-CurrencyCode
-           AND target_currency = @<fs_travel>-CurrencyCode
-           AND valid_from <= @lv_curr_date
-           AND valid_to >= @lv_curr_date INTO @DATA(lv_rate).
+          SELECT SINGLE FROM ztb_curr_conv FIELDS rate
+          WHERE source_currency = @<fs_booking>-CurrencyCode
+          AND target_currency = @<fs_travel>-CurrencyCode
+          AND valid_from <= @lv_curr_date
+          AND valid_to >= @lv_curr_date INTO @DATA(lv_rate_b).
 
-          IF sy-subrc = 0.
-            DATA(lv_conv_amount) = <fs_booking>-FlightPrice * lv_rate.
-            <fs_travel>-TotalPrice += lv_conv_amount.
+          IF sy-subrc IS INITIAL.
+            DATA(lv_conv_amount_b) = <fs_booking>-FlightPrice * lv_rate_b.
+            <fs_travel>-TotalPrice += lv_conv_amount_b.
           ELSE.
             " Handle missing rate
           ENDIF.
+
+          "Capture Supplement Price
+          LOOP AT booksuppls ASSIGNING FIELD-SYMBOL(<fs_supplement>).
+            IF <fs_supplement>-CurrencyCode = <fs_travel>-CurrencyCode.
+              <fs_travel>-TotalPrice += <fs_supplement>-Price.
+            ELSE.
+              SELECT SINGLE FROM ztb_curr_conv FIELDS rate
+              WHERE source_currency = @<fs_supplement>-CurrencyCode
+              AND target_currency = @<fs_travel>-CurrencyCode
+              AND valid_from <= @lv_curr_date
+              AND valid_to >= @lv_curr_date INTO @DATA(lv_rate_s).
+
+              IF sy-subrc IS INITIAL.
+                DATA(lv_conv_amount_s) = <fs_supplement>-Price * lv_rate_s.
+                <fs_travel>-TotalPrice += lv_conv_amount_s.
+              ELSE.
+                " Handle missing rate
+              ENDIF.
+            ENDIF.
+          ENDLOOP.
+
         ENDIF.
       ENDLOOP.
 
@@ -442,13 +573,13 @@ CLASS lhc_Travel IMPLEMENTATION.
       APPEND VALUE #( %tky = ls_travels-%tky
                       %state_area = 'VALIDATE_AGENCY' ) TO reported-travel.
 
-      IF ls_travels-AgencyID IS INITIAL OR NOT line_exists( agencies_db[ agency_id = ls_travels-AgencyID ] ).
+      IF ls_travels-AgencyID IS INITIAL OR NOT line_exists( agencies_db[ agency_id = ls_travels-AgencyId ] ).
         APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
         APPEND VALUE #( %tky = ls_travels-%tky
                         %state_area = 'VALIDATE_AGENCY'
                         %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
                                                       text = 'Agency Id is not available' )
-                        %element-AgencyID = if_abap_behv=>mk-on ) TO reported-travel.
+                        %element-AgencyId = if_abap_behv=>mk-on ) TO reported-travel.
       ENDIF.
     ENDLOOP.
 
@@ -481,12 +612,12 @@ CLASS lhc_Travel IMPLEMENTATION.
       APPEND VALUE #( %tky = ls_travels-%tky
                       %state_area = 'VALIDATE_CUSTOMER' ) TO reported-travel.
 
-      IF ls_travels-CustomerID IS INITIAL OR NOT line_exists( customers_db[ customer_id = ls_travels-CustomerID ] ).
+      IF ls_travels-CustomerID IS INITIAL OR NOT line_exists( customers_db[ customer_id = ls_travels-CustomerId ] ).
         APPEND VALUE #( %tky = ls_travels-%tky ) TO failed-travel.
         APPEND VALUE #( %tky = ls_travels-%tky
                         %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
                                                       text = 'Customer Id is not available' )
-                        %element-CustomerID = if_abap_behv=>mk-on ) TO reported-travel.
+                        %element-CustomerId = if_abap_behv=>mk-on ) TO reported-travel.
       ENDIF.
     ENDLOOP.
 
@@ -528,6 +659,25 @@ ENDCLASS.
 
 CLASS lhc_booking IMPLEMENTATION.
 
+  METHOD get_instance_features.
+
+    "Get Booking instance data
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Booking
+    FIELDS ( BookingStatus ) WITH CORRESPONDING #( keys )
+    RESULT DATA(bookings)
+    FAILED failed.
+
+    "Fill response
+    result = VALUE #( FOR booking IN bookings
+                      LET ls_rejected = COND #( WHEN booking-BookingStatus = 'X'
+                                                THEN if_abap_behv=>fc-o-disabled
+                                                ELSE if_abap_behv=>fc-o-enabled )
+                      IN ( %tky = booking-%tky
+                           %assoc-_BookSuppl = ls_rejected )
+                    ).
+  ENDMETHOD.
+
   METHOD calculateTotalPrice.
 
     "Get corresponding Travel instance data
@@ -548,12 +698,28 @@ CLASS lhc_booking IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD GetDefaultsForBookSuppl.
+ENDCLASS.
 
-  result = VALUE #( FOR key IN keys (
-                                      %pid = key-%pid
-                                      %param = VALUE #( price = ' ' )
-                                    ) ).
+CLASS lhc_booksuppl IMPLEMENTATION.
+
+  METHOD calculateTotalPrice.
+
+    "Get corresponding Travel instance data
+    READ ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY BookSuppl BY \_Travel
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(travels)
+    FAILED DATA(failed).
+
+    "Recalculate the Price
+    MODIFY ENTITIES OF zrap_iv_travel IN LOCAL MODE
+    ENTITY Travel
+    EXECUTE recalcTotalPrice
+    FROM CORRESPONDING #( travels )
+    REPORTED DATA(updated_reported).
+
+    reported = CORRESPONDING #( DEEP updated_reported ).
+
   ENDMETHOD.
 
 ENDCLASS.
