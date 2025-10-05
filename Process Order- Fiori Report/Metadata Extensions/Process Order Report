@@ -1,0 +1,72 @@
+@Metadata.layer: #CORE
+@UI: { headerInfo: { typeName: 'Process Order',
+                     typeNamePlural: 'Proces Orders',
+                     title: { type : #STANDARD,
+                              label: 'Process Order',
+                              value: 'ManufacturingOrder' } }
+ }
+annotate view ZC_RJ_PROCESSORDERDETAIL with
+{
+  @UI.lineItem: [{ position: 10 }]
+  ManufacturingOrder;
+  @UI.lineItem: [{ position: 20 }]
+  OrderOperationInternalID;
+  @UI.selectionField: [{ position: 10 }]
+  @UI.lineItem: [{ position: 30 }]
+  WorkCenter;
+  @UI.selectionField: [{ position: 20 }]
+  @UI.lineItem: [{ position: 40 }]
+  Plant;
+  @UI.lineItem: [{ position: 50 }]
+  SupplyArea;
+  @UI.lineItem: [{ position: 60 }]
+  WorkCenterInternalID;
+  @UI.lineItem: [{ position: 65 },
+                 { type: #FOR_ACTION, dataAction: 'UpdateCostingVariant', label: 'Update Costing Variant' }]
+  ActualCostsCostingVariant;
+  @UI.lineItem: [{ position: 70 }]
+  MfgOrderOperationOrSubOp_2;
+  @UI.lineItem: [{ position: 80 }]
+  ObjectInternalID;
+  @UI.lineItem: [{ position: 90 }]
+  OrderIntBillOfOpItemOfPhase;
+  @UI.lineItem: [{ position: 100 }]
+  OpErlstSchedldExecStrtDte;
+  @UI.lineItem: [{ position: 110 }]
+  OpErlstSchedldExecStrtTme;
+  @UI.selectionField: [{ position: 30 }]
+  @UI.lineItem: [{ position: 120 }]
+  MfgOrderScheduledStartDate;
+  @UI.lineItem: [{ position: 130 }]
+  MfgOrderScheduledEndDate;
+  @UI.lineItem: [{ position: 140 }]
+  Reservation;
+  @UI.lineItem: [{ position: 150 }]
+  MfgOrderPlannedTotalQty;
+  @UI.lineItem: [{ position: 160 }]
+  ProductionUnit;
+  @UI.lineItem: [{ position: 170 }]
+  Material;
+  @UI.lineItem: [{ position: 180 }]
+  ManufacturingOrderImportance;
+  @UI.lineItem: [{ position: 190 }]
+  MfgOrderScheduledEndTime;
+  @UI.lineItem: [{ position: 200 }]
+  MfgOrderScheduledStartTime;
+  @UI.lineItem: [{ position: 210 }]
+  OrderSequenceNumber;
+  @UI.lineItem: [{ position: 220 }]
+  BillOfMaterialVariant;
+  @UI.lineItem: [{ position: 230 }]
+  matnr;
+  @UI.lineItem: [{ position: 240 }]
+  maktx;
+  @UI.lineItem: [{ position: 250 }]
+  ProductName;
+  @UI.lineItem: [{ position: 260 }]
+  status;
+  @UI.selectionField: [{ position: 40 }]
+  techo_closed;
+  @UI.selectionField: [{ position: 50 }]
+  deleted;
+}
