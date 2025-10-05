@@ -1,0 +1,40 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Process Order Projection view'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define root view entity ZC_RJ_PROCESSORDERDETAIL
+  as projection on Zi_Rj_ProcessOrderDetail
+{
+  key     ManufacturingOrder,
+  key     OrderOperationInternalID,
+          WorkCenter,
+          Plant,
+          SupplyArea,
+          WorkCenterInternalID,
+          MfgOrderOperationOrSubOp_2,
+          ObjectInternalID,
+          OrderIntBillOfOpItemOfPhase,
+          OpErlstSchedldExecStrtDte,
+          OpErlstSchedldExecStrtTme,
+          MfgOrderScheduledStartDate,
+          MfgOrderScheduledEndDate,
+          Reservation,
+          MfgOrderPlannedTotalQty,
+          ProductionUnit,
+          Material,
+          ManufacturingOrderImportance,
+          MfgOrderScheduledEndTime,
+          MfgOrderScheduledStartTime,
+          OrderSequenceNumber,
+          BillOfMaterialVariant,
+          matnr,
+          maktx,
+          ProductName,
+          status,
+          techo_closed,
+          @Consumption.filter.defaultValue: ' '
+          deleted,
+          ActualCostsCostingVariant,
+          @ObjectModel.virtualElementCalculatedBy: 'ABAP:ZCL_RJ_PO_READ_TEXT'
+  virtual ltext : abap.string(1000)
+}
