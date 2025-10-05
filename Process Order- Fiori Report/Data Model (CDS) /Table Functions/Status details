@@ -1,0 +1,13 @@
+@EndUserText.label: 'Process Order Status Table Function'
+define table function ZR_RJ_ProcessOrderStatus_TF
+  //with parameters parameter_name : parameter_type
+returns
+{
+  mandt        : abap.clnt;
+  objnr        : j_objnr;
+  status       : abap.string(650);
+  techo_closed : zrj_techo_closed;
+  deleted      : zrj_deleted;
+}
+implemented by method
+  ZCL_RJ_PROCESS_ORDER_STD=>get_status_details;
