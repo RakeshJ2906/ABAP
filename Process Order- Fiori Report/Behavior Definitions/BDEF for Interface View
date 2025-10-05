@@ -1,0 +1,15 @@
+managed implementation in class zbp_i_rj_processorderdetail unique;
+strict ( 2 );
+
+define behavior for Zi_Rj_ProcessOrderDetail //alias <alias_name>
+with unmanaged save
+//persistent table <???>
+lock master
+authorization master ( instance )
+//etag master <field_name>
+{
+  // create;
+  update;
+  //delete;
+  action UpdateCostingVariant parameter ZA_RJ_ACTUALCOSTINGVARIANT result [1] $self;
+}
