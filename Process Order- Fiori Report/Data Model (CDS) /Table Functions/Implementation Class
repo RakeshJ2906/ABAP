@@ -1,0 +1,73 @@
+CLASS zcl_rj_process_order_std DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_amdp_marker_hdb.
+    CLASS-METHODS get_reservation_details
+        FOR TABLE FUNCTION zr_rj_reservationdetails_tf.
+    CLASS-METHODS get_status_details
+        FOR TABLE FUNCTION zr_rj_processorderstatus_tf.
+
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zcl_rj_process_order_std IMPLEMENTATION.
+  METHOD get_reservation_details BY DATABASE FUNCTION
+                                 FOR HDB LANGUAGE SQLSCRIPT
+                                 OPTIONS READ-ONLY USING resb makt.
+
+    RETURN
+     select mandt,
+            rsnum ,
+            matnr,
+            maktx
+            FROM (
+              SELECT a.mandt,
+                     a.rsnum,
+                     a.matnr,
+                     b.maktx,
+                     ROW_NUMBER ( )
+                      OVER ( PARTITION by a.rsnum order by a.bdmng desc ) as row_num
+                     from resb as a
+                     left outer join makt as b
+                     on a.mandt = b.mandt
+                     and a.matnr = b.matnr
+                     and b.spras = session_context ('LOCALE_SAP')
+                     where a.mandt = session_context ('CLIENT')
+                     and a.bdmng is not null
+                     order by rsnum asc
+      ) as sub
+    where sub.row_num = 1;
+
+  ENDMETHOD.
+
+  METHOD get_status_details BY DATABASE FUNCTION
+                            FOR HDB LANGUAGE SQLSCRIPT
+                            OPTIONS READ-ONLY USING jest tj02t.
+    RETURN  select a.mandt,
+                   a.objnr,
+                   string_agg(b.txt30, ', ' ORDER BY b.txt30 desc ) as status,
+                   max(CASE when a.stat in ('I0045', 'I0046') then 'X' else '' end) as techo_closed,
+                   max(CASE when a.stat in ('I0076') then 'X' else '' end ) as deleted
+                   from jest as a
+                   left outer join tj02t as b
+                   on a.mandt = session_context ('CLIENT')
+                   and a.stat = b.istat
+                   and b.spras = session_context ('LOCALE_SAP')
+                   where a.mandt = session_context ('CLIENT')
+                   and a.stat in ( 'I0001', 'I0002', 'I0004',
+                                   'I0010', 'I0012', 'I0045',
+                                   'I0046', 'I0076', 'I0241',
+                                   'I0340', 'I0267', 'I0074',
+                                   'I0055', 'I0007', 'I008' )
+                   and a.inact <> 'X'
+                   group by a.mandt, a.objnr;
+  endmethod.
+
+ENDCLASS.
