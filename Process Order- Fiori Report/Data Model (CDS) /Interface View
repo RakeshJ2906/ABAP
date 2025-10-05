@@ -1,0 +1,48 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Process Order Interface view'
+@Metadata.ignorePropagatedAnnotations: true
+@ObjectModel.usageType:{
+    serviceQuality: #X,
+    sizeCategory: #S,
+    dataClass: #MIXED
+}
+define root view entity Zi_Rj_ProcessOrderDetail
+  as select from I_WorkCenter                  as WorkCenterHeader
+    inner join   I_ManufacturingOrderOperation as Operation   on  WorkCenterHeader.WorkCenterInternalID = Operation.WorkCenterInternalID
+                                                              and Operation.MfgOrderOperationIsPhase    = ' '
+    inner join   ZR_RJ_ProcessOrderDetail      as OrderHeader on Operation.MfgOrderInternalID = OrderHeader.MfgOrderInternalID
+{
+  key  OrderHeader.ManufacturingOrder,           //AFKO-AUFNR
+  key  Operation.OrderOperationInternalID,       //AFVC-APLZL
+       WorkCenterHeader.WorkCenter,              //CRHD-ARBPL
+       WorkCenterHeader.Plant,                   //CRHD-WERKS
+       WorkCenterHeader.SupplyArea,              //CRHD-PRVBE
+       Operation.WorkCenterInternalID,           //AFVC-ARBID
+       Operation.MfgOrderInternalID,             //AFVC-AUFPL
+       Operation.MfgOrderOperationOrSubOp_2,     //AFVC-VORNR
+       Operation.ObjectInternalID,               //AFVC-OBJNR
+       Operation.OrderIntBillOfOpItemOfPhase,    //AFVC-PVZKN
+       Operation.OpErlstSchedldExecStrtDte,      //AFVV-FSAVD
+       Operation.OpErlstSchedldExecStrtTme,      //AFVV-FSAVZ
+       OrderHeader.MfgOrderScheduledStartDate,   //AFKO-GSTRS
+       OrderHeader.MfgOrderScheduledEndDate,     //AFKO-GLTRS
+       OrderHeader.Reservation,                  //AFKO-RSNUM
+       @Semantics.quantity.unitOfMeasure: 'ProductionUnit'
+       OrderHeader.MfgOrderPlannedTotalQty,      //AFKO-GAMNG
+       OrderHeader.ProductionUnit,               //AFKO-GMEIN
+       OrderHeader.Material,                     //AFKO-PLNBEZ
+       OrderHeader.ManufacturingOrderImportance, //AFKO-APRIO
+       OrderHeader.MfgOrderScheduledEndTime,     //AFKO-GLUZS
+       OrderHeader.MfgOrderScheduledStartTime,   //AFKO-GSUZS
+       OrderHeader.OrderSequenceNumber,          //AFKO-CY_SEQNR
+       OrderHeader.BillOfMaterialVariant,        //AFKO-STLAL
+       OrderHeader.ActualCostsCostingVariant,    //AFKO-KLVARI
+       OrderHeader._ReservationDetails.matnr,    //RESB-MATNR
+       OrderHeader._ReservationDetails.maktx,    //RESB-MATNR-MAKT-MAKTX
+       OrderHeader._MatText.ProductName,         //AFKO-PLNBEZ-MAKT-MAKTX
+       OrderHeader._Status.status,               //JEST-STAT-TJ02T-TXT30
+       OrderHeader._Status.techo_closed,         //Techo closed
+       OrderHeader._Status.deleted               //Deleted
+
+}
