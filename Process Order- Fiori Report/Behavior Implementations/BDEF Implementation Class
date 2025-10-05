@@ -1,0 +1,66 @@
+CLASS lhc_zi_rj_processorderdetail DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR zi_rj_processorderdetail RESULT result.
+
+    METHODS updatecostingvariant FOR MODIFY
+      IMPORTING keys FOR ACTION zi_rj_processorderdetail~updatecostingvariant RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_zi_rj_processorderdetail IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD updatecostingvariant.
+
+    MODIFY ENTITIES OF zi_rj_processorderdetail IN LOCAL MODE
+    ENTITY zi_rj_processorderdetail
+    UPDATE FIELDS ( actualcostscostingvariant )
+    WITH VALUE #( FOR ls_key IN keys ( %tky = ls_key-%tky
+                                       actualcostscostingvariant = ls_key-%param-klvari ) ).
+
+    READ ENTITIES OF zi_rj_processorderdetail IN LOCAL MODE
+    ENTITY zi_rj_processorderdetail
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_processorders).
+
+    result = VALUE #( FOR ls_orders IN lt_processorders ( %tky = ls_orders-%tky
+                                                          %param = ls_orders ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_zi_rj_processorderdetail DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS save_modified REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_zi_rj_processorderdetail IMPLEMENTATION.
+
+  METHOD save_modified.
+
+    IF update-zi_rj_processorderdetail IS NOT INITIAL.
+      DATA(lt_record) = update-zi_rj_processorderdetail.
+      DELETE lt_record WHERE %control-actualcostscostingvariant = if_abap_behv=>mk-off.
+      LOOP AT lt_record INTO DATA(ls_record).
+        DATA(lo_instance) = NEW zcl_rj_process_order_update( ).
+        lo_instance->update_order(
+          im_aufnr        = ls_record-manufacturingorder
+          im_cost_variant = ls_record-actualcostscostingvariant ).
+      ENDLOOP.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
