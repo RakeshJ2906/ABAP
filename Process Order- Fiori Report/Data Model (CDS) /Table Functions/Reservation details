@@ -1,0 +1,12 @@
+@EndUserText.label: 'Reservation Details Table Function'
+define table function ZR_RJ_ReservationDetails_TF
+returns
+{
+  mandt : mandt;
+  rsnum : abap.numc( 10 );
+  matnr : matnr;
+  maktx : abap.char(40);
+
+}
+implemented by method
+  ZCL_RJ_PROCESS_ORDER_STD=>get_reservation_details;
