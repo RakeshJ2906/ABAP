@@ -1,0 +1,6 @@
+@EndUserText.label: 'AE for Actual Costing Variant updation'
+define abstract entity ZA_RJ_ACTUALCOSTINGVARIANT
+  //with parameters parameter_name : parameter_type
+{
+  klvari : abap.char(4);
+}
