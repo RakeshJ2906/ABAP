@@ -1,1 +1,4 @@
-
+@EndUserText.label: 'Serv Definition for Process Order Report'
+define service ZUI_RJ_ProcessOrder {
+  expose ZC_RJ_PROCESSORDERDETAIL as ProcessOrder;
+}
