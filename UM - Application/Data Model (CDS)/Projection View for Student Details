@@ -1,0 +1,24 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Student Details'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define root view entity ZC_STUDENT_INFO
+  provider contract transactional_query
+  as projection on ZI_STUDENT_INFO as Student
+{
+  key Class,
+  key Rollno,
+      Firstname,
+      Lastname,
+      Age,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_RJ_GENDER_VH', element: 'Value' } }]
+      Gender,
+      Dob,
+      AvgPercentage,
+      Grade,
+      BehaviorRating,
+      Locallastchangedat,
+
+      /* Associations */
+      _Result : redirected to composition child ZC_STUDENT_RSLT
+}
