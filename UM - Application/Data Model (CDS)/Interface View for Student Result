@@ -1,0 +1,26 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Student Result'
+@Metadata.ignorePropagatedAnnotations: true
+@ObjectModel.usageType:{
+    serviceQuality: #X,
+    sizeCategory: #S,
+    dataClass: #MIXED
+}
+define view entity ZI_STUDENT_RSLT
+  as select from ztb_student_rslt
+  association to parent zi_student_info as _Student on $projection.Class = _Student.Class
+                                                    and $projection.Rollno = _Student.Rollno
+{
+  key class              as Class,
+  key rollno             as Rollno,
+  key exam               as Exam,
+      marksscored        as Marksscored,
+      totalmarks         as Totalmarks,
+      percentage         as Percentage,
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      locallastchangedat as Locallastchangedat,
+      
+      /*Associations*/
+      _Student
+}
