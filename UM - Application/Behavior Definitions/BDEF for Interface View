@@ -1,0 +1,83 @@
+unmanaged implementation in class zbp_i_student_info unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZI_STUDENT_INFO alias Student
+//late numbering
+draft table zdtb_student_inf
+lock master
+total etag Locallastchangedat
+authorization master ( instance )
+etag master Locallastchangedat
+{
+  create ( authorization : global );
+  update;
+  delete;
+
+  field ( readonly ) Rollno, AvgPercentage, Grade, BehaviorRating;
+  field ( mandatory : create, readonly : update ) Class;
+  field ( mandatory ) Firstname, Lastname;
+  association _Result { create; with draft; }
+
+  determination GradeCalculation on modify { field AvgPercentage; }
+  side effects { field AvgPercentage affects field Grade; }
+
+  action ( features : instance ) BehaviorRating parameter ZA_RJ_RATING result [1] $self;
+  internal action recaclAvgPercentage;
+
+  validation ValidateStudentInfo on save { create; update; }
+
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Edit;
+  draft action Resume;
+  draft determine action Prepare{ validation ValidateStudentInfo; }
+
+  mapping for ztb_student_info
+    {
+      Class              = class;
+      Rollno             = rollno;
+      Firstname          = firstname;
+      Lastname           = lastname;
+      Age                = age;
+      Gender             = gender;
+      Dob                = dob;
+      AvgPercentage      = avgpercentage;
+      Grade              = grade;
+      BehaviorRating     = behaviorrating;
+      Locallastchangedat = locallastchangedat;
+    }
+}
+
+define behavior for ZI_STUDENT_RSLT alias Result
+//late numbering
+draft table zdtb_student_rsl
+lock dependent by _Student
+authorization dependent by _Student
+//etag master <field_name>
+etag master Locallastchangedat
+{
+  update;
+  delete;
+  field ( readonly ) Class, Rollno, Percentage;
+  field ( mandatory ) exam;
+  association _Student { with draft; }
+
+  determination PercentageCalculation on modify { field Marksscored, Totalmarks; }
+  determination AvgPercentageCalculate on modify { field Percentage; }
+  side effects
+  { field Marksscored affects field Percentage;
+    field Totalmarks affects field Percentage;
+    field Percentage affects field _Student.AvgPercentage; }
+
+  mapping for ztb_student_rslt
+    {
+      Class              = class;
+      Rollno             = rollno;
+      Exam               = exam;
+      MarksScored        = marksscored;
+      TotalMarks         = totalmarks;
+      Percentage         = percentage;
+      Locallastchangedat = locallastchangedat;
+    }
+}
