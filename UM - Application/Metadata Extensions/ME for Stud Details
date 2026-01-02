@@ -1,0 +1,78 @@
+@Metadata.layer: #CORE
+@Search.searchable: true
+@UI: { headerInfo: { typeName: 'Student',
+                     typeNamePlural: 'Students',
+                     title: { type: #STANDARD, value: 'Firstname' },
+                     description: { value: 'Lastname' }
+                   },
+       presentationVariant: [{ sortOrder: [{ by: 'Class', direction:  #DESC }],
+                               visualizations: [{ type: #AS_LINEITEM }] }] }
+annotate view ZC_STUDENT_INFO with
+{
+  @UI.facet: [{ id: 'Grade',
+                purpose: #HEADER,
+                type: #DATAPOINT_REFERENCE,
+                position: 10,
+                targetQualifier: 'Grade'
+              },
+              { id: 'BehavioralRating',
+                purpose: #HEADER,
+                type: #DATAPOINT_REFERENCE,
+                position: 20,
+                targetQualifier: 'Rating'
+              },
+              { label: 'Student Details',
+                id: 'Student',
+                type: #IDENTIFICATION_REFERENCE,
+                purpose: #STANDARD,
+                position: 10
+              },
+              { label: 'Marks',
+                id: 'Marks',
+                purpose: #STANDARD,
+                type: #LINEITEM_REFERENCE,
+                position: 20,
+                targetElement: '_Result'
+             }]
+  @UI: { lineItem: [{ position: 10, label: 'Class' }],
+         identification: [{ position: 10, label: 'Class' }],
+         selectionField: [{ position: 10 }] }
+  @EndUserText.label: 'Class'
+  Class;
+  @UI: { lineItem: [{ position: 20, label: 'Roll No' }],
+         identification: [{ position: 20, label: 'Roll No' }]}
+  @EndUserText.label: 'Roll No'
+  Rollno;
+  @UI: { lineItem: [{ position: 30, label: 'First Name' }],
+         identification: [{ position: 30, label: 'First Name' }] }
+  @Search.defaultSearchElement: true
+  Firstname;
+  @UI: { lineItem: [{ position: 40, label: 'Last Name' }],
+         identification: [{ position: 40, label: 'Last Name' }] }
+  @Search.defaultSearchElement: true
+  Lastname;
+  @UI: { identification: [{ position: 50, label: 'Student Age' }] }
+  Age;
+  @UI: { lineItem: [{ position: 50, label: 'Student Gender' }],
+         identification: [{ position: 60, label: 'Student Gender' }],
+         selectionField: [{ position: 20 }] }
+  @EndUserText.label: 'Student Gender'
+  Gender;
+  @UI: { identification: [{ position: 70, label: 'Student DOB' }] }
+  Dob;
+  @UI: { lineItem: [{ position: 60, label: 'Average Percentage' }],
+         identification: [{ position: 80, label: 'Average Percentage' }] }
+  @EndUserText.label: 'Grade'
+  AvgPercentage;
+  @UI: { lineItem: [{ position: 70, label: 'Grade' }],
+         dataPoint: { qualifier: 'Grade', title: 'Grade' },
+         selectionField: [{ position: 30 }] }
+  @EndUserText.label: 'Grade'
+  Grade;
+  @UI: { identification: [{ type: #FOR_ACTION, dataAction: 'BehaviorRating', label: 'Give Behavioral Rating' }],
+         dataPoint: { qualifier: 'Rating', title: 'Behavioral Rating', targetValue: 5, visualization: #RATING } }
+  BehaviorRating;
+  @UI.hidden: true
+  Locallastchangedat;
+
+}
