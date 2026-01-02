@@ -1,0 +1,5 @@
+@EndUserText.label: 'Student Details'
+define service ZUI_RJ_STUDENT_UM {
+  expose ZC_STUDENT_INFO as Student;
+  expose ZC_STUDENT_RSLT as Result;
+}
