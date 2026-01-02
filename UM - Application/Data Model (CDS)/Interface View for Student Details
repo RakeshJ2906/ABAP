@@ -1,0 +1,23 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Student Details'
+@Metadata.ignorePropagatedAnnotations: true
+define root view entity ZI_STUDENT_INFO
+  as select from ztb_student_info
+  composition [0..*] of ZI_STUDENT_RSLT as _Result
+{
+  key class              as Class,
+  key rollno             as Rollno,
+      firstname          as Firstname,
+      lastname           as Lastname,
+      age                as Age,
+      gender             as Gender,
+      dob                as Dob,
+      avgpercentage      as AvgPercentage,
+      grade              as Grade,
+      behaviorrating     as BehaviorRating,
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      locallastchangedat as Locallastchangedat,
+
+      /*Associations*/
+      _Result
+}
