@@ -1,0 +1,520 @@
+CLASS lhc_Student DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PUBLIC SECTION.
+
+    CLASS-DATA: gt_student_info TYPE STANDARD TABLE OF ztb_student_info,
+                gt_student_rslt TYPE STANDARD TABLE OF ztb_student_rslt,
+                gt_student_d    TYPE STANDARD TABLE OF ztb_student_info,
+                gt_result_d     TYPE STANDARD TABLE OF ztb_student_rslt.
+
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR Student RESULT result.
+
+    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+      IMPORTING REQUEST requested_authorizations FOR Student RESULT result.
+
+    METHODS create FOR MODIFY
+      IMPORTING entities FOR CREATE Student.
+
+    METHODS update FOR MODIFY
+      IMPORTING entities FOR UPDATE Student.
+
+    METHODS delete FOR MODIFY
+      IMPORTING keys FOR DELETE Student.
+
+    METHODS read FOR READ
+      IMPORTING keys FOR READ Student RESULT result.
+
+    METHODS lock FOR LOCK
+      IMPORTING keys FOR LOCK Student.
+
+    METHODS rba_Result FOR READ
+      IMPORTING keys_rba FOR READ Student\_Result FULL result_requested RESULT result LINK association_links.
+
+    METHODS cba_Result FOR MODIFY
+      IMPORTING entities_cba FOR CREATE Student\_Result.
+
+    METHODS GradeCalculation FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Student~GradeCalculation.
+
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      IMPORTING keys REQUEST requested_features FOR Student RESULT result.
+
+    METHODS BehaviorRating FOR MODIFY
+      IMPORTING keys FOR ACTION Student~BehaviorRating RESULT result.
+
+    METHODS ValidateStudentInfo FOR VALIDATE ON SAVE
+      IMPORTING keys FOR Student~ValidateStudentInfo.
+
+    METHODS recaclAvgPercentage FOR MODIFY
+      IMPORTING keys FOR ACTION Student~recaclAvgPercentage.
+
+    CLASS-METHODS: get_next_rollno IMPORTING im_class         TYPE char2
+                                   RETURNING VALUE(rv_rollno) TYPE char2.
+
+ENDCLASS.
+
+CLASS lhc_Student IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD get_global_authorizations.
+  ENDMETHOD.
+
+  METHOD create.
+    DATA: ls_student_info TYPE ztb_student_info,
+          lv_timestampl   TYPE timestampl.
+
+    GET  TIME STAMP FIELD lv_timestampl.
+    LOOP AT entities INTO DATA(ls_entities).
+      ls_student_info = CORRESPONDING #( ls_entities MAPPING FROM ENTITY ).
+      ls_student_info-rollno = get_next_rollno( EXPORTING im_class = ls_entities-Class ).
+      ls_student_info-locallastchangedat = lv_timestampl.
+      APPEND ls_student_info TO gt_student_info.
+      APPEND VALUE #( %cid = ls_entities-%cid
+                      %key-class = ls_entities-class
+                      %key-rollno = ls_student_info-rollno
+                      %is_draft = ls_entities-%is_draft ) TO mapped-student.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD update.
+    DATA: lv_timestampl  TYPE timestampl.
+
+    GET  TIME STAMP FIELD lv_timestampl.
+
+    SELECT * FROM ztb_student_info
+        FOR ALL ENTRIES IN @entities
+        WHERE class = @entities-Class
+        AND rollno = @entities-Rollno
+        INTO TABLE @DATA(lt_student_dtl_old).
+
+    LOOP AT entities INTO DATA(ls_entity).
+      " Get the control structure
+      DATA(ls_control) = ls_entity-%control.
+
+      " Read old record
+      DATA(ls_student_info_upd) = VALUE #( lt_student_dtl_old[ class = ls_entity-Class
+                                                               rollno = ls_entity-Rollno ] OPTIONAL ).
+
+      " Dynamically loop over all fields of the entity
+      DATA(lo_structdescr) = CAST cl_abap_structdescr(
+                                cl_abap_typedescr=>describe_by_data( ls_entity-%data ) ).
+
+      LOOP AT lo_structdescr->components INTO DATA(ls_comp).
+
+        DATA(fieldname) = ls_comp-name.
+
+        " Check dynamically if field is marked for update in %control
+        ASSIGN COMPONENT fieldname OF STRUCTURE ls_control TO FIELD-SYMBOL(<fs_control>).
+        ASSIGN COMPONENT fieldname OF STRUCTURE ls_entity  TO FIELD-SYMBOL(<fs_new>).
+        ASSIGN COMPONENT fieldname OF STRUCTURE ls_student_info_upd TO FIELD-SYMBOL(<fs_upd>).
+
+        IF <fs_control> IS ASSIGNED AND <fs_control> = if_abap_behv=>mk-on.
+          " Update only the controlled fields
+          <fs_upd> = <fs_new>.
+        ENDIF.
+
+      ENDLOOP.
+      ls_student_info_upd-locallastchangedat = lv_timestampl.
+      APPEND ls_student_info_upd TO gt_student_info.
+
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD delete.
+    gt_student_d = VALUE #( FOR ls_key IN keys
+                            ( class = ls_key-Class
+                              rollno = ls_key-Rollno ) ).
+    SELECT * FROM ztb_student_rslt
+      FOR ALL ENTRIES IN @keys
+      WHERE class = @keys-class
+      AND rollno = @keys-Rollno
+      INTO TABLE @gt_result_d.
+  ENDMETHOD.
+
+  METHOD read.
+    SELECT * FROM ztb_student_info
+          FOR ALL ENTRIES IN @keys
+          WHERE class = @keys-Class
+          AND rollno = @keys-Rollno
+          INTO TABLE @DATA(lt_student_info).
+
+    IF lt_student_info IS NOT INITIAL.
+      result = CORRESPONDING #( lt_student_info MAPPING TO ENTITY ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD lock.
+  ENDMETHOD.
+
+  METHOD rba_Result.
+  ENDMETHOD.
+
+  METHOD cba_Result.
+    DATA: ls_student_rslt TYPE ztb_student_rslt.
+
+    LOOP AT entities_cba INTO DATA(ls_entities_cba).
+      LOOP AT ls_entities_cba-%target INTO DATA(ls_results).
+        ls_student_rslt = CORRESPONDING #( ls_results MAPPING FROM ENTITY ).
+        ls_student_rslt-class = ls_entities_cba-Class.
+        ls_student_rslt-rollno = ls_entities_cba-Rollno.
+        APPEND ls_student_rslt TO gt_student_rslt.
+        APPEND VALUE #( %cid = ls_results-%cid
+                        %key = ls_results-%key
+                        %is_draft = ls_results-%is_draft ) TO mapped-result.
+      ENDLOOP.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD get_next_rollno.
+    SELECT MAX( rollno ) FROM ztb_student_info
+        WHERE class = @im_class INTO @DATA(lv_last_roll).
+    IF lv_last_roll IS NOT INITIAL.
+      rv_rollno = lv_last_roll + 1.
+    ELSE.
+      rv_rollno = 1.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD GradeCalculation.
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+      ENTITY Student
+      FIELDS ( AvgPercentage )
+      WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_student).
+
+    LOOP AT lt_student ASSIGNING FIELD-SYMBOL(<fs_student>).
+      <fs_student>-Grade = COND #( WHEN <fs_student>-AvgPercentage > 90 THEN 'O'
+                                   WHEN <fs_student>-AvgPercentage > 80
+                                   AND <fs_student>-AvgPercentage <= 90 THEN 'A'
+                                   WHEN <fs_student>-AvgPercentage > 70
+                                   AND <fs_student>-AvgPercentage <= 80 THEN 'B'
+                                   WHEN <fs_student>-AvgPercentage > 60
+                                   AND <fs_student>-AvgPercentage <= 70 THEN 'C'
+                                   WHEN <fs_student>-AvgPercentage > 50
+                                   AND <fs_student>-AvgPercentage <= 60 THEN 'D'
+                                   WHEN <fs_student>-AvgPercentage > 40
+                                   AND <fs_student>-AvgPercentage <= 50 THEN 'E'
+                                   WHEN <fs_student>-AvgPercentage <= 40 THEN 'F' ).
+    ENDLOOP.
+
+    MODIFY ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    UPDATE FIELDS ( Grade )
+    WITH CORRESPONDING #( lt_student )
+    REPORTED DATA(lt_reported).
+
+    reported = CORRESPONDING #( DEEP lt_reported ).
+
+  ENDMETHOD.
+
+  METHOD get_instance_features.
+  ENDMETHOD.
+
+  METHOD BehaviorRating.
+
+    MODIFY ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    UPDATE FIELDS ( BehaviorRating )
+    WITH VALUE #( FOR ls_key IN keys
+                  ( %tky = ls_key-%tky
+                    BehaviorRating = ls_key-%param-rating ) ).
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_student).
+
+    result = VALUE #( FOR ls_student IN lt_student
+                      ( %tky = ls_student-%tky
+                        %param = ls_student ) ).
+
+  ENDMETHOD.
+
+  METHOD ValidateStudentInfo.
+
+    DATA: lv_age_msg TYPE c LENGTH 60.
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_student).
+
+    LOOP AT lt_student INTO DATA(ls_student).
+      lv_age_msg = COND #( WHEN ls_student-class = 1 AND ls_student-age < 5
+                             THEN 'Minimum age for class 1 is 5 years'
+                             WHEN ls_student-class = 2 AND ls_student-age < 6
+                             THEN 'Minimum age for class 2 is 6 years'
+                             WHEN ls_student-class = 3 AND ls_student-age < 7
+                             THEN 'Minimum age for class 3 is 7 years'
+                             WHEN ls_student-class = 4 AND ls_student-age < 8
+                             THEN 'Minimum age for class 4 is 8 years'
+                             WHEN ls_student-class = 5 AND ls_student-age < 9
+                             THEN 'Minimum age for class 5 is 9 years'
+                             WHEN ls_student-class = 6 AND ls_student-age < 10
+                             THEN 'Minimum age for class 6 is 10 years'
+                             WHEN ls_student-class = 7 AND ls_student-age < 11
+                             THEN 'Minimum age for class 7 is 11 years'
+                             WHEN ls_student-class = 8 AND ls_student-age < 12
+                             THEN 'Minimum age for class 8 is 12 years'
+                             WHEN ls_student-class = 9 AND ls_student-age < 13
+                             THEN 'Minimum age for class 9 is 13 years'
+                             WHEN ls_student-class = 10 AND ls_student-age < 14
+                             THEN 'Minimum age for class 10 is 14 years' ).
+      APPEND VALUE #( %tky = ls_student-%tky
+                      %state_area = 'VALIDATE_AGE' ) TO reported-student.
+      IF lv_age_msg IS NOT INITIAL.
+        APPEND VALUE #( %tky = ls_student-%tky ) TO failed-student.
+        APPEND VALUE #( %tky = ls_student-%tky
+                        %state_area = 'VALIDATE_AGE'
+                        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
+                                                      text = lv_age_msg )
+                        %element-age = if_abap_behv=>mk-on ) TO reported-student.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD recaclAvgPercentage.
+
+    DATA: lt_stud_rslt TYPE TABLE FOR READ RESULT zi_student_info\\student\_result.
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    FIELDS ( AvgPercentage )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_student).
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student BY \_Result
+    ALL FIELDS WITH CORRESPONDING #( lt_student )
+    RESULT DATA(lt_result).
+
+    LOOP AT lt_student ASSIGNING FIELD-SYMBOL(<fs_student>).
+      CLEAR: lt_stud_rslt.
+      lt_stud_rslt =  VALUE #( FOR ls_result IN lt_result WHERE ( class = <fs_student>-class
+                                                                  AND rollno = <fs_student>-Rollno )
+                                    ( ls_result ) ).
+      DATA(lv_total_percentage) = REDUCE #( INIT x = 0 count = 1
+                                          FOR stud_result IN lt_stud_rslt
+                                          NEXT x += stud_result-Percentage
+                                          count += 1 ).
+      DATA(lv_exams)  = lines( lt_stud_rslt ).
+      <fs_student>-AvgPercentage = lv_total_percentage / lv_exams.
+    ENDLOOP.
+
+    MODIFY ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    UPDATE FIELDS ( AvgPercentage )
+    WITH CORRESPONDING #( lt_student )
+    REPORTED DATA(lt_reported).
+
+    reported = CORRESPONDING #( DEEP lt_reported ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lhc_Result DEFINITION INHERITING FROM cl_abap_behavior_handler.
+
+  PUBLIC SECTION.
+
+    CLASS-DATA: gt_rslt_update TYPE STANDARD TABLE OF ztb_student_rslt,
+                gt_result_d    TYPE STANDARD TABLE OF ztb_student_rslt.
+
+  PRIVATE SECTION.
+
+    METHODS update FOR MODIFY
+      IMPORTING entities FOR UPDATE Result.
+
+    METHODS delete FOR MODIFY
+      IMPORTING keys FOR DELETE Result.
+
+    METHODS read FOR READ
+      IMPORTING keys FOR READ Result RESULT result.
+
+    METHODS rba_Student FOR READ
+      IMPORTING keys_rba FOR READ Result\_Student FULL result_requested RESULT result LINK association_links.
+
+    METHODS PercentageCalculation FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Result~PercentageCalculation.
+
+    METHODS AvgPercentageCalculate FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR Result~AvgPercentageCalculate.
+
+ENDCLASS.
+
+CLASS lhc_Result IMPLEMENTATION.
+
+  METHOD update.
+    DATA: lv_timestampl  TYPE timestampl.
+
+    GET  TIME STAMP FIELD lv_timestampl.
+
+    SELECT * FROM ztb_student_rslt
+        FOR ALL ENTRIES IN @entities
+        WHERE class = @entities-Class
+        AND rollno = @entities-Rollno
+        AND exam = @entities-Exam
+        INTO TABLE @DATA(lt_student_rslt_old).
+
+    LOOP AT entities INTO DATA(ls_entity).
+      " Get the control structure
+      DATA(ls_control) = ls_entity-%control.
+
+      " Read old record
+      DATA(ls_student_rslt_upd) = VALUE #( lt_student_rslt_old[ class = ls_entity-Class
+                                                                rollno = ls_entity-Rollno
+                                                                exam = ls_entity-Exam ] OPTIONAL ).
+
+      " Dynamically loop over all fields of the entity
+      DATA(lo_structdescr) = CAST cl_abap_structdescr(
+                                cl_abap_typedescr=>describe_by_data( ls_entity-%data ) ).
+
+      LOOP AT lo_structdescr->components INTO DATA(ls_comp).
+
+        DATA(fieldname) = ls_comp-name.
+
+        " Check dynamically if field is marked for update in %control
+        ASSIGN COMPONENT fieldname OF STRUCTURE ls_control TO FIELD-SYMBOL(<fs_control>).
+        ASSIGN COMPONENT fieldname OF STRUCTURE ls_entity  TO FIELD-SYMBOL(<fs_new>).
+        ASSIGN COMPONENT fieldname OF STRUCTURE ls_student_rslt_upd TO FIELD-SYMBOL(<fs_upd>).
+
+        IF <fs_control> IS ASSIGNED AND <fs_control> = if_abap_behv=>mk-on.
+          " Update only the controlled fields
+          <fs_upd> = <fs_new>.
+        ENDIF.
+
+      ENDLOOP.
+      ls_student_rslt_upd-locallastchangedat = lv_timestampl.
+      APPEND ls_student_rslt_upd TO gt_rslt_update.
+
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD delete.
+    gt_result_d = VALUE #( FOR ls_key IN keys
+                           ( class = ls_key-Class
+                             rollno = ls_key-Rollno
+                             exam = ls_key-Exam ) ).
+  ENDMETHOD.
+
+  METHOD read.
+  ENDMETHOD.
+
+  METHOD rba_Student.
+  ENDMETHOD.
+
+  METHOD PercentageCalculation.
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Result
+    FIELDS ( Marksscored Totalmarks )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_result).
+
+    LOOP AT lt_result ASSIGNING FIELD-SYMBOL(<fs_result>).
+      IF <fs_result>-Marksscored IS NOT INITIAL AND <fs_result>-Totalmarks IS NOT INITIAL.
+        <fs_result>-Percentage = ( <fs_result>-Marksscored / <fs_result>-Totalmarks ) * 100.
+      ENDIF.
+    ENDLOOP.
+
+    MODIFY ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Result
+    UPDATE FIELDS ( Percentage )
+    WITH CORRESPONDING #( lt_result )
+    REPORTED DATA(lt_reported).
+
+    reported = CORRESPONDING #( DEEP lt_reported ).
+
+  ENDMETHOD.
+
+  METHOD AvgPercentageCalculate.
+
+    READ ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Result BY \_Student
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_student).
+
+    MODIFY ENTITIES OF zi_student_info IN LOCAL MODE
+    ENTITY Student
+    EXECUTE recaclAvgPercentage
+    FROM CORRESPONDING #( lt_student )
+    REPORTED DATA(lt_reported).
+
+    reported = CORRESPONDING #( DEEP lt_reported ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_ZI_STUDENT_INFO DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS finalize REDEFINITION.
+
+    METHODS check_before_save REDEFINITION.
+
+    METHODS save REDEFINITION.
+
+    METHODS cleanup REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_ZI_STUDENT_INFO IMPLEMENTATION.
+
+  METHOD finalize.
+  ENDMETHOD.
+
+  METHOD check_before_save.
+  ENDMETHOD.
+
+  METHOD save.
+    DATA(lt_student_info) = lhc_Student=>gt_student_info.
+    DATA(lt_student_d) = lhc_student=>gt_student_d.
+    DATA(lt_student_result_d) = lhc_student=>gt_result_d.
+    DATA(lt_student_rslt) = lhc_Student=>gt_student_rslt.
+    DATA(lt_result_update) = lhc_Result=>gt_rslt_update.
+    DATA(lt_result_d) = lhc_result=>gt_result_d.
+
+    "Student Create or Update
+    IF lt_student_info IS NOT INITIAL.
+      MODIFY ztb_student_info FROM TABLE @lt_student_info.
+    ENDIF.
+
+    "Student Delete
+    IF lt_student_d IS NOT INITIAL.
+      IF lt_student_result_d IS NOT INITIAL.
+        DELETE ztb_student_rslt FROM TABLE @lt_student_result_d.
+      ENDIF.
+      DELETE ztb_student_info FROM TABLE @lt_student_d.
+    ENDIF.
+
+    "Result Create
+    IF lt_student_rslt IS NOT INITIAL.
+      MODIFY ztb_student_rslt FROM TABLE @lt_student_rslt.
+    ENDIF.
+
+    "Result Update
+    IF lt_result_update IS NOT INITIAL.
+      MODIFY ztb_student_rslt FROM TABLE @lt_result_update.
+    ENDIF.
+
+    "Result Delete
+    IF lt_result_d IS NOT INITIAL.
+      DELETE ztb_student_rslt FROM TABLE @lt_result_d.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD cleanup.
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
