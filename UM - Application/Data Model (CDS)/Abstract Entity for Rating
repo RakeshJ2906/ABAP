@@ -1,0 +1,9 @@
+@EndUserText.label: 'AE for Rating'
+define abstract entity ZA_RJ_RATING
+  //with parameters parameter_name : parameter_type
+{
+    @EndUserText.label: 'Rating'
+    @UI.defaultValue: #( 'ELEMENT_OF_REFERENCED_ENTITY: BehaviorRating' )
+    @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_RJ_RATING_VH', element: 'Value' } }]
+    rating : zrj_rating;
+}
