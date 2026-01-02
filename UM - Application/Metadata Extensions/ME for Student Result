@@ -1,0 +1,34 @@
+@Metadata.layer: #CORE
+@UI: { headerInfo: { typeName: 'Marks',
+                     typeNamePlural: 'Marks'
+                   } }
+annotate view ZC_STUDENT_RSLT
+    with 
+{
+     @UI.facet: [{ label: 'Marks',
+                id: 'Marks',
+                purpose: #STANDARD,
+                type: #IDENTIFICATION_REFERENCE,
+                position: 10
+              }]
+    @UI.hidden: true
+    Class;
+    @UI.hidden: true
+    Rollno;
+    @UI: { lineItem: [{ position: 10, label: 'Exam' }],
+         identification: [{ position: 10, label: 'Exam' }] }
+    @EndUserText.label: 'Exam'
+    Exam;
+    @UI: { lineItem: [{ position: 20, label: 'Marks Scored' }],
+         identification: [{ position: 20, label: 'Marks Scored' }] }
+    Marksscored;
+    @UI: { lineItem: [{ position: 30, label: 'Total Marks' }],
+         identification: [{ position: 30, label: 'Total Marks' }] }
+    Totalmarks;
+    @UI: { lineItem: [{ position: 40, label: 'Percentage' }],
+         identification: [{ position: 40, label: 'Percentage' }] }
+    Percentage;
+    @UI.hidden: true
+    Locallastchangedat;
+    
+}
