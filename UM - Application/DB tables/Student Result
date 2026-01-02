@@ -1,0 +1,17 @@
+@EndUserText.label : 'Student Result'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table ztb_student_rslt {
+
+  key client         : abap.clnt not null;
+  key class          : abap.char(2) not null;
+  key rollno         : abap.char(2) not null;
+  key exam           : abap.char(3) not null;
+  marksscored        : abap.numc(3);
+  totalmarks         : abap.numc(3);
+  percentage         : abap.numc(3);
+  locallastchangedat : timestampl;
+
+}
