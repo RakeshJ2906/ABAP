@@ -1,0 +1,19 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Student Result'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define view entity ZC_STUDENT_RSLT
+  as projection on ZI_STUDENT_RSLT as Result
+{
+  key Class,
+  key Rollno,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'ZI_RJ_EXAM_VH', element: 'Value' } }]
+  key Exam,
+      Marksscored,
+      Totalmarks,
+      Percentage,
+      Locallastchangedat,
+
+      /* Associations */
+      _Student : redirected to parent ZC_STUDENT_INFO
+}
