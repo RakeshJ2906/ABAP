@@ -1,0 +1,23 @@
+@EndUserText.label: 'Travel Cutom entity'
+@ObjectModel.query.implementedBy: 'ABAP:ZCL_RJ_CE_TRAVEL'
+@Metadata.allowExtensions: true
+define root custom entity ZRJ_I_TRAVEL_CE
+  //with parameters parameter_name : parameter_type
+{
+
+  key travel_id             : /dmo/travel_id;
+      agency_id             : /dmo/agency_id;
+      customer_id           : /dmo/customer_id;
+      begin_date            : /dmo/begin_date;
+      end_date              : /dmo/end_date;
+      @Semantics.amount.currencyCode: 'CURRENCY_CODE'
+      booking_fee           : /dmo/booking_fee;
+      @Semantics.amount.currencyCode: 'CURRENCY_CODE'
+      total_price           : /dmo/total_price;
+      currency_code         : /dmo/currency_code;
+      description           : /dmo/description;
+      overall_status        : abap.char(10);
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at : timestampl;
+
+}
