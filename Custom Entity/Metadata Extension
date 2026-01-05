@@ -1,0 +1,43 @@
+@Metadata.layer: #CORE
+annotate entity ZRJ_I_TRAVEL_CE with
+{
+  @UI.facet   : [{ position  : 10,
+                   label : 'General',
+                   purpose: #STANDARD,
+                   type  : #IDENTIFICATION_REFERENCE
+                 }]
+  @UI: { lineItem: [{ position: 10, label: 'Travel Id' }],
+         identification: [{ position: 10, label: 'Travel Id' }],
+         selectionField: [{ position: 10 }] }
+  travel_id;
+  @UI: { lineItem: [{ position: 20, label: 'Agency Id' }],
+         identification : [{ position: 20, label: 'Agency Id' }],
+         selectionField : [{ position: 20}] }
+  agency_id;
+  @UI: { lineItem: [{ position: 30, label: 'Customer Id' }],
+         identification : [{ position: 30, label: 'Customer Id' }] }
+  customer_id;
+  @UI: { lineItem: [{ position: 40, label: 'Begin date' }],
+         identification : [{ position: 40, label: 'Begin date' }] }
+  begin_date;
+  @UI: { lineItem: [{ position: 50, label: 'End date' }],
+         identification : [{ position: 50, label: 'End date' }] }
+  end_date;
+  @UI: { lineItem: [{ position: 60, label: 'Booking Fee' }],
+         identification : [{ position: 60, label: 'Booking Fee' }] }
+  booking_fee;
+  @UI: { lineItem: [{ position: 70, label: 'Total Price' }],
+         identification : [{ position: 70, label: 'Total Price' }] }
+  total_price;
+  @UI.hidden : true
+  currency_code;
+  @UI: { lineItem: [{ position: 80, label: 'Description' }],
+         identification : [{ position: 80, label: 'Description' }] }
+  description;
+  @UI: { lineItem: [{ position: 90, label: 'Overall Status' }],
+         identification : [{ position: 90, label: 'Overall Status' }] }
+  overall_status;
+  @UI.hidden : true
+  local_last_changed_at;
+
+}
