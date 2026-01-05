@@ -1,0 +1,4 @@
+@EndUserText.label: 'Travel CE'
+define service ZRJ_UI_TRAVEL_CE {
+  expose ZRJ_I_TRAVEL_CE;
+}
