@@ -1,4 +1,9 @@
 @Metadata.layer: #CORE
+@UI.headerInfo: { typeName: 'Travel', typeNamePlural: 'Travels' }
+@UI.selectionVariant: [{ qualifier: 'All', text: 'All' },
+                       { qualifier: 'Open', text: 'Open', filter: 'overall_status eq "Open"' },
+                       { qualifier: 'Accepted', text: 'Accepted', filter: 'overall_status eq "Accepted"' },
+                       { qualifier: 'Rejected', text: 'Rejected', filter: 'overall_status eq "Cancel"' }]
 annotate entity ZRJ_I_TRAVEL_CE with
 {
   @UI.facet   : [{ position  : 10,
