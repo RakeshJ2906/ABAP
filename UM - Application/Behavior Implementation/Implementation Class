@@ -154,13 +154,16 @@ CLASS lhc_Student IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD cba_Result.
-    DATA: ls_student_rslt TYPE ztb_student_rslt.
+    DATA: ls_student_rslt TYPE ztb_student_rslt,
+          lv_timestampl   TYPE timestampl.
 
+    GET  TIME STAMP FIELD lv_timestampl.
     LOOP AT entities_cba INTO DATA(ls_entities_cba).
       LOOP AT ls_entities_cba-%target INTO DATA(ls_results).
         ls_student_rslt = CORRESPONDING #( ls_results MAPPING FROM ENTITY ).
         ls_student_rslt-class = ls_entities_cba-Class.
         ls_student_rslt-rollno = ls_entities_cba-Rollno.
+        ls_student_rslt-locallastchangedat = lv_timestampl.
         APPEND ls_student_rslt TO gt_student_rslt.
         APPEND VALUE #( %cid = ls_results-%cid
                         %key = ls_results-%key
@@ -403,6 +406,18 @@ CLASS lhc_Result IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD read.
+
+    SELECT * FROM ztb_student_rslt
+    FOR ALL ENTRIES IN @keys
+    WHERE class = @keys-class
+    AND rollno = @keys-Rollno
+    AND exam = @keys-exam
+    INTO TABLE @DATA(lt_result).
+
+    IF lt_result IS NOT INITIAL.
+      result = CORRESPONDING #( lt_result MAPPING TO ENTITY ).
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD rba_Student.
