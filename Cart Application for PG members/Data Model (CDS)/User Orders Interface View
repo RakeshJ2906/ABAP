@@ -1,0 +1,22 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'User Orders'
+@Metadata.ignorePropagatedAnnotations: false
+define root view entity ZI_RJ_USERORDERS
+  as select from I_PurchaseRequisitionItemAPI01
+{
+  key PurchaseRequisition,
+  key PurchaseRequisitionItem,
+      Material as OrderedItem,
+      PurchaseRequisitionItemText,
+      PurReqCreationDate,
+      RequestedQuantity,
+      PurchaseRequisitionPrice,
+      PurReqnPriceQuantity,
+      BaseUnit,
+      PurReqnItemCurrency,
+      PurchasingDocument,
+      PurchasingDocumentItem
+}
+where
+  CreatedByUser = $session.user
