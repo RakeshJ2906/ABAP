@@ -1,0 +1,11 @@
+@EndUserText.label: 'AE for Weather details'
+define abstract entity ZA_WEATHER
+  //with parameters parameter_name : parameter_type
+{
+    @UI.multiLineText: true
+    @EndUserText.label: 'Weather Forecast for next 5 days'
+    weather_forecast : abap.string(1000);
+    @EndUserText.label: 'Pick delivery date'
+    delivery_date : abap.dats;
+    
+}
