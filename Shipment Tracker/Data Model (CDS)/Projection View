@@ -1,0 +1,22 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Shipment'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define root view entity ZC_SHIPMENT
+  provider contract transactional_query
+  as projection on ZI_SHIPMENT as Shipment
+{
+  key Shipmentid,
+      ShippingMode,
+      ShippingFrom,
+      ShippingTo,
+      ShipmentStatus,
+      StatusCriticality,
+      DeliveryDate,
+      AIPrediction,
+      CreatedBy,
+      CreatedAt,
+      LastChangedBy,
+      LastChangedAt,
+      LocalLastChangedAt
+}
