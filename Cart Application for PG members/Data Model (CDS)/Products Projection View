@@ -1,0 +1,16 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Products'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define root view entity ZC_RJ_PRODUCTS
+  as projection on ZI_RJ_PRODUCTS
+{
+  key Product,
+      Price,
+      Currency,
+
+      /* Associations */
+      _Valuation
+}
+where
+  Price != 0
