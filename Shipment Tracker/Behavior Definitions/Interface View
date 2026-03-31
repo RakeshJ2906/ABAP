@@ -1,0 +1,45 @@
+managed implementation in class zbp_i_shipment unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZI_SHIPMENT alias Shipment
+persistent table ztb_shipment
+draft table zdtb_shipment
+lock master
+total etag LocalLastChangedAt
+authorization master ( instance )
+late numbering
+//etag master <field_name>
+{
+  create ( authorization : global );
+  update;
+  delete;
+  field ( readonly ) Shipmentid, CreatedAt, DeliveryDate, AIPrediction;
+
+  action ( features : instance ) assign_delvdate parameter ZA_WEATHER result [1] $self
+  { default function GetDefaultsForWeather; }
+
+  action ( features : instance ) delv_prediction result [1] $self;
+
+  draft action Edit;
+  draft action Resume;
+  draft action Activate optimized;
+  draft action Discard;
+  draft determine action Prepare { }
+
+  mapping for ztb_shipment
+    {
+      Shipmentid         = shipmentid;
+      ShippingMode       = shipping_mode;
+      ShippingFrom       = shipping_from;
+      ShippingTo         = shipping_to;
+      ShipmentStatus     = shipment_status;
+      DeliveryDate       = delivery_date;
+      AIPrediction       = ai_prediction;
+      CreatedBy          = created_by;
+      CreatedAt          = created_at;
+      LastChangedBy      = last_changed_by;
+      LastChangedAt      = last_changed_at;
+      LocalLastChangedAt = local_last_changed_at;
+    }
+}
