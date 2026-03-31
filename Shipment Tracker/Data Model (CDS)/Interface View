@@ -1,0 +1,32 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Shipment'
+@Metadata.ignorePropagatedAnnotations: true
+define root view entity ZI_SHIPMENT
+  as select from ztb_shipment
+{
+  key shipmentid            as Shipmentid,
+      shipping_mode         as ShippingMode,
+      shipping_from         as ShippingFrom,
+      shipping_to           as ShippingTo,
+      shipment_status       as ShipmentStatus,
+      case shipment_status
+      when 'On-Track'  then 3
+      when 'Delayed'   then 2
+      when 'Cancelled' then 1
+                       else 0
+      end                   as StatusCriticality,
+      delivery_date         as DeliveryDate,
+      @UI.multiLineText: true
+      ai_prediction         as AIPrediction,
+      @Semantics.user.createdBy: true
+      created_by            as CreatedBy,
+      @Semantics.systemDateTime.createdAt: true
+      created_at            as CreatedAt,
+      @Semantics.user.lastChangedBy: true
+      last_changed_by       as LastChangedBy,
+      @Semantics.systemDateTime.lastChangedAt: true
+      last_changed_at       as LastChangedAt,
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at as LocalLastChangedAt
+}
