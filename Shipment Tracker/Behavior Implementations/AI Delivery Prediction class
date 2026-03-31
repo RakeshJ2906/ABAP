@@ -1,0 +1,226 @@
+CLASS zrj_delivery_prediction DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC.
+
+  PUBLIC SECTION.
+
+    TYPES: BEGIN OF ty_shipment_input,
+             delivery_date   TYPE d,
+             source_location TYPE string,
+             destination     TYPE string,
+           END OF ty_shipment_input,
+
+           BEGIN OF ty_ai_result,
+             recommendation TYPE string,
+             risk_level     TYPE string,
+             estimated_days TYPE i,
+             message        TYPE string,
+           END OF ty_ai_result.
+
+    METHODS ai_prediction
+      IMPORTING im_shipment_input TYPE ty_shipment_input
+      EXPORTING ex_ai_prediction  TYPE ty_ai_result.
+
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+    CONSTANTS: c_gemini_api_url TYPE string VALUE 'https://generativelanguage.googleapis.com',
+               c_gemini_model   TYPE string VALUE 'gemini-2.5-flash-lite',
+               c_api_version    TYPE string VALUE 'v1beta'.
+
+    CLASS-METHODS build_payload
+      IMPORTING
+        im_shipment_input TYPE ty_shipment_input
+      RETURNING
+        VALUE(rv_payload) TYPE string.
+
+    CLASS-METHODS parse_response
+      IMPORTING
+        im_response      TYPE string
+      RETURNING
+        VALUE(rs_result) TYPE ty_ai_result.
+
+ENDCLASS.
+
+
+
+CLASS zrj_delivery_prediction IMPLEMENTATION.
+
+  METHOD ai_prediction.
+
+    DATA: lv_payload  TYPE string,
+          ls_response TYPE string,
+          ls_result   TYPE ty_ai_result.
+
+    DATA(lv_path) = '/v1beta/models/' && c_gemini_model && ':generateContent?key='
+                    && 'AIzaSyBK3UAEwLZWT2aPQiCDoLu3RRDFbkCjv-0'.
+
+    TRY.
+        DATA(lo_destination) = cl_http_destination_provider=>create_by_url( i_url = c_gemini_api_url ).
+
+        DATA(lo_client) = cl_web_http_client_manager=>create_by_http_destination( i_destination = lo_destination ).
+
+        DATA(lo_request) = lo_client->get_http_request( ).
+
+        lo_request->set_header_field( i_name  = '~request_uri'
+                                      i_value = lv_path ).
+
+        lo_request->set_header_field( i_name  = 'Content-Type'
+                                      i_value = 'application/json' ).
+
+        CLEAR: lv_payload.
+        lv_payload = build_payload( im_shipment_input ).
+        lo_request->set_text( lv_payload ).
+
+        ls_response = lo_client->execute( if_web_http_client=>post )->get_text( ).
+
+        ex_ai_prediction = parse_response( ls_response ).
+
+      CATCH cx_http_dest_provider_error INTO DATA(lo_dest_error).
+      CATCH cx_web_http_client_error INTO DATA(lo_client_error).
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD build_payload.
+
+    TYPES: BEGIN OF ty_part,
+             text TYPE string,
+           END OF ty_part.
+
+    TYPES: BEGIN OF ty_content,
+             parts TYPE STANDARD TABLE OF ty_part WITH DEFAULT KEY,
+           END OF ty_content.
+
+    TYPES: BEGIN OF ty_gen_config,
+             maxOutputTokens TYPE i,
+             temperature     TYPE f,
+           END OF ty_gen_config.
+
+    TYPES: BEGIN OF ty_request,
+             contents         TYPE STANDARD TABLE OF ty_content WITH DEFAULT KEY,
+             generationConfig TYPE ty_gen_config,
+           END OF ty_request.
+
+    DATA: ls_request TYPE ty_request,
+          ls_content TYPE ty_content,
+          ls_part    TYPE ty_part.
+
+
+    DATA(lv_prompt) = 'You are a logistics AI assistant.'
+                       && 'Analyze the shipment details below.'
+                       && 'Respond ONLY with a raw JSON object.'
+                       && 'No markdown. No code blocks. No backticks. No explanation.'  "stronger instruction
+                       && 'Start your response directly with { and end with } and give only below 4 fields in the response.'
+                       && 'Use exactly this structure: '
+                       && '{"risk_level":"Low or Medium or High",'
+                       && '"recommendation":"one sentence recommended action",'
+                       && '"estimated_days":3,'
+                       && '"message":"brief explanation of your assessment"} '
+                       && 'Shipment details: '
+                       && 'Delivery date: ' && im_shipment_input-delivery_date && '.'
+                       && 'Origin : ' && im_shipment_input-source_location && '.'
+                       && 'Destination: '  && im_shipment_input-destination && '.'.
+
+    DATA(lv_escaped) = lv_prompt.
+    REPLACE ALL OCCURRENCES OF '\' IN lv_escaped WITH '\\'.
+    REPLACE ALL OCCURRENCES OF '"' IN lv_escaped WITH '\"'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline
+                             IN lv_escaped WITH '\n'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf
+                             IN lv_escaped WITH '\n'.
+
+    "Build JSON manually to preserve exact camelCase field names
+    rv_payload = '{'
+                 && '"contents":[{'
+                 &&   '"parts":[{'
+                 &&     '"text":"' && lv_escaped && '"'
+                 &&   '}]'
+                 && '}],'
+                 && '"generationConfig":{'
+                 &&   '"maxOutputTokens":512,'
+                 &&   '"temperature":0.2'
+                 && '}'
+                 && '}'.
+
+  ENDMETHOD.
+
+  METHOD parse_response.
+
+    TYPES: BEGIN OF ty_part,
+             text TYPE string,
+           END OF ty_part.
+
+    TYPES: BEGIN OF ty_content,
+             parts TYPE STANDARD TABLE OF ty_part WITH DEFAULT KEY,
+           END OF ty_content.
+
+    TYPES: BEGIN OF ty_candidate,
+             content TYPE ty_content,
+           END OF ty_candidate.
+
+    TYPES: BEGIN OF ty_gemini_response,
+             candidates TYPE STANDARD TABLE OF ty_candidate WITH DEFAULT KEY,
+           END OF ty_gemini_response.
+
+    DATA: ls_gemini_resp TYPE ty_gemini_response,
+          lv_inner_text  TYPE string.
+
+    "Step 1: De-serialize the outer Gemini response envelope
+    /ui2/cl_json=>deserialize(
+      EXPORTING
+        json        = im_response
+        pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+      CHANGING
+        data        = ls_gemini_resp
+    ).
+
+    "Step 2: Navigate to candidates[0].content.parts[0].text
+    READ TABLE ls_gemini_resp-candidates INDEX 1 INTO DATA(ls_candidate).
+    IF sy-subrc <> 0.
+      rs_result-message = 'No candidates in Gemini response'.
+      RETURN.
+    ENDIF.
+    READ TABLE ls_candidate-content-parts INDEX 1 INTO DATA(ls_part).
+    IF sy-subrc <> 0 OR ls_part-text IS INITIAL.
+      rs_result-message = 'Empty text in Gemini response'.
+      RETURN.
+    ENDIF.
+
+    lv_inner_text = ls_part-text.
+
+    "Step 3: Robustly strip mark-down code blocks
+    " Gemini returns: ```json\n{...}\n```
+    " We need to extract just the {…} part
+
+    "Remove opening ```json or ``` with optional newline
+    REPLACE REGEX '```[a-zA-Z]*\n?' IN lv_inner_text WITH ''.
+
+    "Remove closing ``` with optional newline
+    REPLACE ALL OCCURRENCES OF '```' IN lv_inner_text WITH ''.
+
+    "Remove any literal \n characters Gemini adds
+    REPLACE ALL OCCURRENCES OF '\n' IN lv_inner_text WITH ''.
+
+    "Remove actual newline and carriage return characters
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline
+                             IN lv_inner_text WITH ''.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf
+                             IN lv_inner_text WITH ''.
+
+    "Trim leading/trailing whitespace
+    CONDENSE lv_inner_text.
+
+    "Step 4: De-serialize the clean inner JSON into our result structure
+    /ui2/cl_json=>deserialize(
+      EXPORTING
+        json        = lv_inner_text
+        pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+      CHANGING
+        data        = rs_result
+    ).
+
+  ENDMETHOD.
+
+ENDCLASS.
