@@ -1,0 +1,13 @@
+@EndUserText.label: 'AE for Order Placing'
+define abstract entity ZA_RJ_PLACE_ORDER
+  //with parameters parameter_name : parameter_type
+{
+  @EndUserText.label: 'Order Quantity'
+  @Semantics.quantity.unitOfMeasure: 'BaseUnit'
+  Quantity  : abap.quan( 13, 3 );
+  @EndUserText.label: 'Item Notes'
+  ItemNotes : abap.char(40);
+  @UI.hidden: true
+  @Semantics.unitOfMeasure: true
+  BaseUnit : meins;
+}
