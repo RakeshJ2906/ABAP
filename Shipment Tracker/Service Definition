@@ -1,0 +1,4 @@
+@EndUserText.label: 'SD for Shipment'
+define service ZRJ_SHIPMENT_SRV {
+  expose ZC_SHIPMENT as Shipment;
+}
