@@ -1,0 +1,5 @@
+@EndUserText.label: 'Products'
+define service ZSDEF_RJ_PRODUCTS {
+  expose ZC_RJ_PRODUCTS   as Products;
+  expose ZC_RJ_USERORDERS as UserOrders;
+}
