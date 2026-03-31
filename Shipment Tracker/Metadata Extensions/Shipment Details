@@ -1,0 +1,49 @@
+@Metadata.layer: #CORE
+@UI.headerInfo: { typeName: 'Shipment',
+                  typeNamePlural: 'Shipment',
+                  title: { type: #STANDARD, label: 'Shipment Id', value: 'Shipmentid' } }
+@Search.searchable: true
+annotate view ZC_SHIPMENT with
+{
+  @UI.facet: [{ id: 'Shipment',
+                position: 10,
+                label: 'Shipment Details',
+                purpose: #STANDARD,
+                type: #IDENTIFICATION_REFERENCE }]
+  @UI: { lineItem: [{ position: 10, label: 'Shipment Id' }],
+         identification: [{ position: 10, label: 'Shipment Id' },
+                          { type: #FOR_ACTION, dataAction: 'assign_delvdate', label: 'Assign Delivery Date' },
+                          { type: #FOR_ACTION, dataAction: 'delv_prediction', label: 'AI Prediction' }] }
+  @Search.defaultSearchElement: true
+  Shipmentid;
+  @UI: { lineItem: [{ position: 20, label: 'Shipping Mode' }],
+         identification: [{ position: 20, label: 'Shipping Mode' }],
+         selectionField: [{ position: 10 }] }
+  ShippingMode;
+  @UI: { lineItem: [{ position: 30, label: 'Shipping From' }],
+         identification: [{ position: 30, label: 'Shipping From' }] }
+  ShippingFrom;
+  @UI: { lineItem: [{ position: 40, label: 'Shiping To' }],
+         identification: [{ position: 40, label: 'Shipping To' }] }
+  ShippingTo;
+  @UI: { identification: [{ position: 50, label: 'Shipment Created At' }] }
+  CreatedAt;
+  @UI: { lineItem: [{ position: 60, label: 'Shipment Status', criticality: 'StatusCriticality' }],
+         identification: [{ position: 60, label: 'Shipment Status', criticality: 'StatusCriticality' }],
+         selectionField: [{ position: 20 }] }
+  ShipmentStatus;
+  @UI: { lineItem: [{ position: 70, label: 'Promised Delivery Date' }],
+         identification: [{ position: 70, label: 'Promised Delivery Date' }] }
+  DeliveryDate;
+  @UI: { lineItem: [{ position: 80, label: 'Delivery Prediction with AI' }],
+         identification: [{ position: 80, label: 'Delivery Prediction with AI' }] }
+  AIPrediction;
+  @UI.hidden: true
+  CreatedBy;
+  @UI.hidden: true
+  LastChangedBy;
+  @UI.hidden: true
+  LastChangedAt;
+  @UI.hidden: true
+  LocalLastChangedAt;
+}
