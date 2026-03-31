@@ -1,0 +1,22 @@
+@EndUserText.label : 'Shipment'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table ztb_shipment {
+
+  key client            : abap.clnt not null;
+  key shipmentid        : abap.char(10) not null;
+  shipping_mode         : abap.string(0);
+  shipping_from         : abap.char(40);
+  shipping_to           : abap.char(40);
+  shipment_status       : abap.char(20);
+  delivery_date         : abap.dats;
+  ai_prediction         : abap.string(0);
+  created_by            : syuname;
+  created_at            : timestampl;
+  last_changed_by       : syuname;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}
