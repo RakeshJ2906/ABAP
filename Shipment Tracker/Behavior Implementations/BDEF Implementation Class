@@ -1,0 +1,278 @@
+CLASS lhc_Shipment DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR Shipment RESULT result.
+
+    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+      IMPORTING REQUEST requested_authorizations FOR Shipment RESULT result.
+
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      IMPORTING keys REQUEST requested_features FOR Shipment RESULT result.
+
+    METHODS GetDefaultsForWeather FOR READ
+      IMPORTING keys FOR FUNCTION Shipment~GetDefaultsForWeather RESULT result.
+
+    METHODS assign_delvdate FOR MODIFY
+      IMPORTING keys FOR ACTION Shipment~assign_delvdate RESULT result.
+    METHODS delv_prediction FOR MODIFY
+      IMPORTING keys FOR ACTION Shipment~delv_prediction RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_Shipment IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD get_global_authorizations.
+  ENDMETHOD.
+
+  METHOD get_instance_features.
+
+    READ ENTITIES OF zi_shipment IN LOCAL MODE
+    ENTITY Shipment
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_shipments).
+
+    result = VALUE #( FOR ls_shipment IN lt_shipments
+                      LET lv_date_assign = COND #( WHEN ls_shipment-%is_draft = '01'
+                                                   OR ls_shipment-DeliveryDate IS NOT INITIAL
+                                              THEN if_abap_behv=>fc-o-disabled
+                                              ELSE if_abap_behv=>fc-o-enabled )
+                          lv_ai_prediction = COND #( WHEN ls_shipment-%is_draft = '01'
+                                              THEN if_abap_behv=>fc-o-disabled
+                                              ELSE if_abap_behv=>fc-o-enabled )
+                      IN ( %tky = ls_shipment-%tky
+                           %action-assign_delvdate = lv_date_assign
+                           %action-delv_prediction = lv_ai_prediction ) ).
+
+  ENDMETHOD.
+
+  METHOD GetDefaultsForWeather.
+
+    TYPES: BEGIN OF ty_weather_desc,
+             id          TYPE i,
+             main        TYPE string,
+             description TYPE string,
+             icon        TYPE string,
+           END OF ty_weather_desc,
+           tt_weather_desc TYPE STANDARD TABLE OF ty_weather_desc WITH EMPTY KEY.
+
+    TYPES: BEGIN OF ty_main_stats,
+             temp       TYPE decfloat34,
+             feels_like TYPE decfloat34,
+             humidity   TYPE i,
+             pressure   TYPE i,
+           END OF ty_main_stats.
+
+    TYPES: BEGIN OF ty_forecast_item,
+             dt      TYPE i,
+             dt_txt  TYPE string,
+             main    TYPE ty_main_stats,
+             weather TYPE tt_weather_desc,
+           END OF ty_forecast_item,
+           tt_forecast_list TYPE STANDARD TABLE OF ty_forecast_item WITH EMPTY KEY.
+
+    TYPES: BEGIN OF ty_weather_response,
+             cod     TYPE string,
+             message TYPE i,
+             cnt     TYPE i,
+             list    TYPE tt_forecast_list,
+           END OF ty_weather_response.
+
+    DATA: ls_api_response TYPE string,
+          ls_weather      TYPE ty_weather_response,
+          lv_forecast     TYPE string.
+
+
+    READ ENTITIES OF zi_shipment IN LOCAL MODE
+    ENTITY Shipment
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_shipments)
+    FAILED failed
+    REPORTED reported.
+
+    LOOP AT lt_shipments INTO DATA(ls_shipment).
+      TRY.
+          DATA(lo_destination) = cl_http_destination_provider=>create_by_url( i_url = 'https://pro.openweathermap.org/data/2.5/forecast' ).
+
+          DATA(lo_client) = cl_web_http_client_manager=>create_by_http_destination( i_destination = lo_destination ).
+
+          DATA(lo_request) = lo_client->get_http_request( ).
+          lo_request->set_header_field( i_name = 'Accept' i_value = 'application/json' ).
+          lo_request->set_content_type( content_type = 'application/json' ).
+          lo_request->set_form_field( i_name = 'q' i_value = CONV #( ls_shipment-ShippingTo ) ).
+          lo_request->set_form_field( i_name = 'appid' i_value = '5d3c0803d6a530385f8617522aec934b' ).
+
+          ls_api_response = lo_client->execute( if_web_http_client=>get )->get_text( ).
+
+        CATCH cx_http_dest_provider_error INTO DATA(lo_dest_error).
+        CATCH cx_web_http_client_error INTO DATA(lo_client_error).
+      ENDTRY.
+
+      /ui2/cl_json=>deserialize( EXPORTING json = ls_api_response
+                                           pretty_name = /ui2/cl_json=>pretty_mode-user_low_case
+                                 CHANGING data = ls_weather ).
+
+      DATA(lt_weather_details) = ls_weather-list[].
+      CLEAR: lv_forecast.
+      LOOP AT lt_weather_details INTO DATA(ls_details).
+        IF ls_details-dt_txt+11(8) = '12:00:00'.
+          DATA(lv_weather) = ls_details-weather[ 1 ]-description.
+          lv_forecast = |{ lv_forecast }{ ls_details-dt_txt(10) } : { lv_weather }{ cl_abap_char_utilities=>newline }|.
+        ENDIF.
+      ENDLOOP.
+      APPEND VALUE #( %tky = ls_shipment-%tky
+                      %param-weather_forecast = lv_forecast ) TO result.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD assign_delvdate.
+
+    MODIFY ENTITIES OF zi_shipment IN LOCAL MODE
+    ENTITY Shipment
+    UPDATE FIELDS ( DeliveryDate )
+    WITH VALUE #( FOR ls_key IN keys
+                  ( %tky = ls_key-%tky
+                    DeliveryDate = ls_key-%param-delivery_date ) )
+    FAILED failed
+    REPORTED reported.
+
+    READ ENTITIES OF zi_shipment IN LOCAL MODE
+    ENTITY Shipment
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_shipments)
+    FAILED failed
+    REPORTED reported.
+
+    result = VALUE #( FOR ls_shipment IN lt_shipments
+                      ( %tky = ls_shipment-%tky
+                        %param = ls_shipment ) ).
+
+  ENDMETHOD.
+
+  METHOD delv_prediction.
+
+    TYPES: BEGIN OF ty_shipment_input,
+             delivery_date   TYPE d,
+             source_location TYPE string,
+             destination     TYPE string,
+           END OF ty_shipment_input,
+
+           BEGIN OF ty_ai_result,
+             recommendation TYPE string,
+             risk_level     TYPE string,
+             estimated_days TYPE i,
+             message        TYPE string,
+           END OF ty_ai_result.
+
+    DATA: lt_shipments_update TYPE TABLE FOR UPDATE zi_shipment\\shipment,
+          ls_shipment_input   TYPE ty_shipment_input,
+          ls_ai_result        TYPE ty_ai_result.
+
+    READ ENTITIES OF zi_shipment IN LOCAL MODE
+    ENTITY Shipment
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_shipments)
+    FAILED failed
+    REPORTED reported.
+
+    DATA(lo_delivery_prediction) = NEW zrj_delivery_prediction( ).
+
+    LOOP AT lt_shipments INTO DATA(ls_shipment).
+
+      ls_shipment_input = VALUE #( delivery_date = ls_shipment-DeliveryDate
+                                   source_location = ls_shipment-ShippingFrom
+                                   destination = ls_shipment-ShippingTo ).
+
+      lo_delivery_prediction->ai_prediction(
+        EXPORTING
+          im_shipment_input = ls_shipment_input
+        IMPORTING
+          ex_ai_prediction  = ls_ai_result ).
+
+      IF ls_ai_result IS NOT INITIAL.
+        DATA(lv_status) = SWITCH #( ls_ai_result-risk_level WHEN 'Low' THEN 'On-Track'
+                                                            WHEN 'Medium' THEN 'Delayed'
+                                                            WHEN 'High' THEN 'Delayed' ).
+        APPEND VALUE #( %tky = ls_shipment-%tky
+                        shipmentstatus = lv_status
+                        aiprediction = ls_ai_result-message ) TO lt_shipments_update.
+      ENDIF.
+
+    ENDLOOP.
+
+    IF lt_shipments_update IS NOT INITIAL.
+      MODIFY ENTITIES OF zi_shipment IN LOCAL MODE
+      ENTITY Shipment
+      UPDATE FIELDS ( ShipmentStatus AIPrediction )
+      WITH lt_shipments_update
+      FAILED failed
+      REPORTED reported.
+    ENDIF.
+
+    READ ENTITIES OF zi_shipment IN LOCAL MODE
+    ENTITY Shipment
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_shipments_refreshed)
+    FAILED failed
+    REPORTED reported.
+
+    result = VALUE #( FOR ls_data IN lt_shipments_refreshed
+                      ( %tky = ls_data-%tky
+                        %param = ls_data ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_ZI_SHIPMENT DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS adjust_numbers REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_ZI_SHIPMENT IMPLEMENTATION.
+
+  METHOD adjust_numbers.
+
+    DATA: lv_shipmentid_max TYPE c LENGTH 10.
+
+    IF mapped-shipment IS NOT INITIAL.
+      DATA(lt_shipments) = mapped-shipment.
+      "Remove instances which are already assigned with Shipment Id..
+      DELETE lt_shipments WHERE Shipmentid IS NOT INITIAL.
+    ENDIF.
+
+    IF lt_shipments IS NOT INITIAL.
+      "Get Max Shipment Id from active table..
+      SELECT SINGLE FROM ztb_shipment
+        FIELDS MAX( shipmentid )
+        INTO @lv_shipmentid_max.
+      "Get Max Shipment Id from draft table..
+      SELECT SINGLE FROM zdtb_shipment
+        FIELDS MAX( shipmentid )
+        INTO @DATA(lv_dshipmentid_max).
+      "Calculate Max Shipment Id..
+      IF lv_dshipmentid_max > lv_shipmentid_max.
+        lv_shipmentid_max = lv_dshipmentid_max.
+      ENDIF.
+    ENDIF.
+
+    LOOP AT mapped-shipment ASSIGNING FIELD-SYMBOL(<fs_shipment>).
+      lv_shipmentid_max += 1.
+      lv_shipmentid_max = |{ lv_shipmentid_max ALPHA =  IN }|.
+      <fs_shipment>-%key-Shipmentid = lv_shipmentid_max.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
