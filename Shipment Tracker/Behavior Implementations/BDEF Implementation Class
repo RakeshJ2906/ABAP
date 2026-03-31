@@ -103,7 +103,7 @@ CLASS lhc_Shipment IMPLEMENTATION.
           lo_request->set_header_field( i_name = 'Accept' i_value = 'application/json' ).
           lo_request->set_content_type( content_type = 'application/json' ).
           lo_request->set_form_field( i_name = 'q' i_value = CONV #( ls_shipment-ShippingTo ) ).
-          lo_request->set_form_field( i_name = 'appid' i_value = '5d3c0803d6a530385f8617522aec934b' ).
+          lo_request->set_form_field( i_name = 'appid' i_value = 'API Key' ).
 
           ls_api_response = lo_client->execute( if_web_http_client=>get )->get_text( ).
 
