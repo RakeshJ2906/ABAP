@@ -1,0 +1,41 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Interface view for PR UM'
+@Metadata.ignorePropagatedAnnotations: false
+define root view entity ZI_RJ_PR_UM
+  as select from I_PurchaseRequisitionItemAPI01
+  //composition of target_data_source_name as _association_name
+{
+  key PurchaseRequisition as prnum,
+  key PurchaseRequisitionItem,
+      PurchaseReqnItemUniqueID,
+      PurchasingDocument,
+      PurchasingDocumentItem,
+      PurReqnReleaseStatus,
+      PurchaseRequisitionType,
+      PurchasingDocumentSubtype,
+      PurchasingDocumentItemCategory,
+      PurchaseRequisitionItemText,
+      AccountAssignmentCategory,
+      Material,
+      MaterialGroup,
+      PurchasingDocumentCategory,
+      RequestedQuantity,
+      BaseUnit,
+      PurchaseRequisitionPrice,
+      PurReqnPriceQuantity,
+      MaterialGoodsReceiptDuration,
+      ReleaseCode,
+      PurchaseRequisitionReleaseDate,
+      PurchasingOrganization,
+      PurchasingGroup,
+      Plant,
+      OrderedQuantity,
+      DeliveryDate,
+      CreationDate,
+      CreatedByUser,
+      PurReqCreationDate,
+      PurReqnItemCurrency,
+      /* Associations */
+      _PurchaseRequisition,
+      _PurReqnAcctAssgmt
+}
