@@ -1,0 +1,4 @@
+@EndUserText.label: 'PR Creation'
+define service ZUI_RJ_PR_UM {
+  expose ZC_RJ_PR_UM as prhead;
+}
