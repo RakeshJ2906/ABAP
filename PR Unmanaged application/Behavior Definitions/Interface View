@@ -1,0 +1,13 @@
+unmanaged implementation in class zbp_i_rj_pr_um unique;
+strict ( 2 );
+
+define behavior for ZI_RJ_PR_UM alias prhead
+//late numbering
+lock master
+authorization master ( instance )
+//
+{
+  create;
+  update;
+  delete;
+}
