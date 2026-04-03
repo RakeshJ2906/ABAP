@@ -1,0 +1,32 @@
+@Metadata.layer: #CORE
+@UI: { headerInfo: { typeName: 'Order Placed',
+                     typeNamePlural: 'Orders Placed' } }
+@UI.selectionVariant: [{ qualifier: 'All', text: 'My Orders' }]
+annotate view ZC_RJ_USERORDERS
+    with 
+{
+    @UI.lineItem: [{ position: 10, label: 'Purchase Requisiton' }]
+    PurchaseRequisition;
+    @UI.lineItem: [{ position: 20, label: 'Purchase Requisiton Item' }]
+    PurchaseRequisitionItem;
+    @UI.lineItem: [{ position: 25, label: 'Ordered Item' }]
+    OrderedItem;
+    @UI.lineItem: [{ position: 30, label: 'Item Notes' }]
+    PurchaseRequisitionItemText;
+    @UI.lineItem: [{ position: 40, label: 'Order Created on' }]
+    PurReqCreationDate;
+    @UI.lineItem: [{ position: 50, label: 'Order quntity' }]
+    RequestedQuantity;
+    @UI.lineItem: [{ position: 60, label: 'Order Price' }]
+    PurchaseRequisitionPrice;
+    @UI.hidden: true
+    PurReqnPriceQuantity;
+    @UI.hidden: true
+    BaseUnit;
+    @UI.hidden: true
+    PurReqnItemCurrency;
+    @UI.lineItem: [{ position: 70, label: 'PO Created' }]
+    PurchasingDocument;
+    @UI.lineItem: [{ position: 80, label: 'PO Item' }]
+    PurchasingDocumentItem;
+}
