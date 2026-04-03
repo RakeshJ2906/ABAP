@@ -1,0 +1,59 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Projection view for PR UM'
+@Metadata.ignorePropagatedAnnotations: false
+@Search.searchable: true
+@Metadata.allowExtensions: true
+define root view entity ZC_RJ_PR_UM
+  provider contract transactional_query
+  as projection on ZI_RJ_PR_UM
+{
+  key prnum,
+  key PurchaseRequisitionItem,
+      PurchaseReqnItemUniqueID,
+      PurchasingDocument,
+      PurchasingDocumentItem,
+      PurReqnReleaseStatus,
+      PurchaseRequisitionType,
+      PurchasingDocumentSubtype,
+      PurchasingDocumentItemCategory,
+      PurchaseRequisitionItemText,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'I_AccountAssignmentCategory',
+                                                     element: 'AccountAssignmentCategory' } }]
+      @ObjectModel.text.element: [ 'AccountAssignmentCategory' ]
+      @Search.defaultSearchElement: true
+      AccountAssignmentCategory,
+      Material,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'I_ProductGroup_2',
+                                                     element: 'ProductGroup' } }]
+      @ObjectModel.text.element: ['MaterialGroup']
+      @Search.defaultSearchElement: true
+      MaterialGroup,
+      PurchasingDocumentCategory,
+      RequestedQuantity,
+      BaseUnit,
+      PurchaseRequisitionPrice,
+      PurReqnPriceQuantity,
+      MaterialGoodsReceiptDuration,
+      ReleaseCode,
+      PurchaseRequisitionReleaseDate,
+      PurchasingOrganization,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'I_PURCHASINGGROUP',
+                                                     element: 'PurchasingGroup' } }]
+      @ObjectModel.text.element: ['PurchasingGroup']
+      @Search.defaultSearchElement: true
+      PurchasingGroup,
+      @Consumption.valueHelpDefinition: [{ entity: { name: 'I_PLANT',
+                                                     element: 'Plant' } }]
+      @ObjectModel.text.element: ['Plant']
+      @Search.defaultSearchElement: true
+      Plant,
+      OrderedQuantity,
+      DeliveryDate,
+      CreationDate,
+      CreatedByUser,
+      PurReqCreationDate,
+      PurReqnItemCurrency,
+      /* Associations */
+      _PurchaseRequisition,
+      _PurReqnAcctAssgmt
+}
