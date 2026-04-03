@@ -1,0 +1,15 @@
+unmanaged implementation in class zbp_i_rj_products unique;
+strict ( 2 );
+
+define behavior for ZI_RJ_PRODUCTS alias Products
+//late numbering
+lock master
+authorization master ( instance )
+//etag master <field_name>
+{
+  //create;
+  update;
+  //delete;
+
+  action ( features : instance ) placeOrder parameter ZA_RJ_PLACE_ORDER result [1] $self;
+}
