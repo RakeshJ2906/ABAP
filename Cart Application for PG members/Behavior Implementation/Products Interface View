@@ -1,0 +1,149 @@
+CLASS lhc_zi_rj_products DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR products RESULT result.
+
+    METHODS update FOR MODIFY
+      IMPORTING entities FOR UPDATE products.
+
+    METHODS read FOR READ
+      IMPORTING keys FOR READ products RESULT result.
+
+    METHODS lock FOR LOCK
+      IMPORTING keys FOR LOCK products.
+
+    METHODS placeorder FOR MODIFY
+      IMPORTING keys FOR ACTION products~placeorder RESULT result.
+
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      IMPORTING keys REQUEST requested_features FOR products RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_zi_rj_products IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD update.
+  ENDMETHOD.
+
+  METHOD read.
+  ENDMETHOD.
+
+  METHOD lock.
+  ENDMETHOD.
+
+  METHOD placeorder.
+
+    SELECT * FROM zi_rj_products
+      FOR ALL ENTRIES IN @keys
+      WHERE product = @keys-product
+      INTO TABLE @DATA(lt_products).
+
+    LOOP AT keys ASSIGNING FIELD-SYMBOL(<fs_request>).
+
+      DATA(ls_product_data) = VALUE #( lt_products[ product = <fs_request>-product ] OPTIONAL ).
+
+      MODIFY ENTITIES OF i_purchaserequisitiontp PRIVILEGED
+      ENTITY purchaserequisition
+      CREATE FIELDS ( purchaserequisitiontype )
+      WITH VALUE #( ( %cid = 'My%CID_1'
+                      purchaserequisitiontype = 'NB' ) )
+      CREATE BY \_purchaserequisitionitem
+      FIELDS ( plant
+               purchaserequisitionitemtext
+               accountassignmentcategory
+               requestedquantity
+               baseunit
+               purchaserequisitionprice
+               purreqnitemcurrency
+               materialgroup
+               purchasinggroup )
+       WITH VALUE #( ( %cid_ref = 'My%CID_1'
+                       %target = VALUE #( ( %cid = 'My%ItemCID_1'
+                                            plant = '1710'
+                                            purchaserequisitionitemtext     = <fs_request>-%param-itemnotes
+                                            accountassignmentcategory       = 'U'
+                                            material                        = ls_product_data-product
+                                            requestedquantity               = <fs_request>-%param-quantity
+                                            baseunit                        = ls_product_data-baseunit
+                                            purchaserequisitionprice        = ls_product_data-price
+                                            purreqnitemcurrency             = ls_product_data-currency
+                                            materialgroup                   = 'L001'
+                                            purchasinggroup                 = '001' ) )
+                   ) )
+       ENTITY purchaserequisitionitem
+       CREATE BY \_purchasereqnitemtext
+       FIELDS ( plainlongtext )
+       WITH VALUE #( ( %cid_ref = 'My%ItemCID_1'
+                       %target = VALUE #( ( %cid = 'MyTargetCID_2'
+                                            textobjecttype = 'B01'
+                                            language       = 'E'
+                                            plainlongtext  = 'item text created from Cart APP'
+                                          )
+                                          ( %cid = 'MyTargetCID_3'
+                                            textobjecttype = 'B02'
+                                            language       = 'E'
+                                            plainlongtext  = 'item2 text created from Cart APP'
+                                          ) )
+                   ) )
+        REPORTED DATA(ls_reported)
+        MAPPED DATA(ls_mapped)
+        FAILED DATA(ls_failed).
+
+      reported = CORRESPONDING #( DEEP ls_reported ).
+      mapped   = CORRESPONDING #( DEEP ls_mapped ).
+      failed   = CORRESPONDING #( DEEP ls_failed ).
+
+    ENDLOOP.
+
+    READ ENTITIES OF zi_rj_products IN LOCAL MODE
+    ENTITY products
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_products_data).
+
+    result = VALUE #( FOR ls_products IN lt_products_data ( %tky = ls_products-%tky
+                                                            %param = ls_products ) ).
+
+  ENDMETHOD.
+
+  METHOD get_instance_features.
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_zi_rj_products DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS finalize REDEFINITION.
+
+    METHODS check_before_save REDEFINITION.
+
+    METHODS save REDEFINITION.
+
+    METHODS cleanup REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_zi_rj_products IMPLEMENTATION.
+
+  METHOD finalize.
+  ENDMETHOD.
+
+  METHOD check_before_save.
+  ENDMETHOD.
+
+  METHOD save.
+  ENDMETHOD.
+
+  METHOD cleanup.
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
