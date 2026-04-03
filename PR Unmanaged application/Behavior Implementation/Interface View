@@ -1,0 +1,132 @@
+CLASS lhc_prhead DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR prhead RESULT result.
+
+    METHODS create FOR MODIFY
+      IMPORTING entities FOR CREATE prhead.
+
+    METHODS update FOR MODIFY
+      IMPORTING entities FOR UPDATE prhead.
+
+    METHODS delete FOR MODIFY
+      IMPORTING keys FOR DELETE prhead.
+
+    METHODS read FOR READ
+      IMPORTING keys FOR READ prhead RESULT result.
+
+    METHODS lock FOR LOCK
+      IMPORTING keys FOR LOCK prhead.
+
+ENDCLASS.
+
+CLASS lhc_prhead IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD create.
+
+    LOOP AT entities ASSIGNING FIELD-SYMBOL(<fs_prs>).
+      MODIFY ENTITIES OF i_purchaserequisitiontp
+      ENTITY purchaserequisition
+      CREATE FIELDS ( purchaserequisitiontype )
+      WITH VALUE #( ( %cid = 'My%CID_1'
+                      purchaserequisitiontype = 'NB' ) )
+      CREATE BY \_purchaserequisitionitem
+      FIELDS ( plant
+               purchaserequisitionitemtext
+               accountassignmentcategory
+               requestedquantity
+               baseunit
+               purchaserequisitionprice
+               purreqnitemcurrency
+               materialgroup
+               purchasinggroup )
+       WITH VALUE #( ( %cid_ref = 'My%CID_1'
+                       %target = VALUE #( ( %cid = 'My%ItemCID_1'
+                                            plant = <fs_prs>-plant
+                                            purchaserequisitionitemtext     = <fs_prs>-purchaserequisitionitemtext
+                                            accountassignmentcategory       = <fs_prs>-accountassignmentcategory
+                                            requestedquantity               = <fs_prs>-requestedquantity
+                                            baseunit                        = <fs_prs>-baseunit
+                                            purchaserequisitionprice        = <fs_prs>-purchaserequisitionprice
+                                            purreqnitemcurrency             = <fs_prs>-purreqnitemcurrency
+                                            materialgroup                   = <fs_prs>-materialgroup
+                                            purchasinggroup                 = <fs_prs>-purchasinggroup ) )
+                   ) )
+       ENTITY purchaserequisitionitem
+       CREATE BY \_purchasereqnitemtext
+       FIELDS ( plainlongtext )
+       WITH VALUE #( ( %cid_ref = 'My%ItemCID_1'
+                       %target = VALUE #( ( %cid = 'MyTargetCID_2'
+                                            textobjecttype = 'B01'
+                                            language       = 'E'
+                                            plainlongtext  = 'item text created from PR Unmanaged APP'
+                                          )
+                                          ( %cid = 'MyTargetCID_3'
+                                            textobjecttype = 'B02'
+                                            language       = 'E'
+                                            plainlongtext  = 'item2 text created from PR Unmanaged APP'
+                                          ) )
+                   ) )
+        REPORTED DATA(ls_reported)
+        MAPPED DATA(ls_mapped)
+        FAILED DATA(ls_failed).
+
+      reported = CORRESPONDING #( deep ls_reported ).
+      mapped = CORRESPONDING #( deep ls_mapped ).
+      failed = CORRESPONDING #( deep ls_failed ).
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD update.
+  ENDMETHOD.
+
+  METHOD delete.
+  ENDMETHOD.
+
+  METHOD read.
+  ENDMETHOD.
+
+  METHOD lock.
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_zi_rj_pr_um DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS finalize REDEFINITION.
+
+    METHODS check_before_save REDEFINITION.
+
+    METHODS save REDEFINITION.
+
+    METHODS cleanup REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_zi_rj_pr_um IMPLEMENTATION.
+
+  METHOD finalize.
+  ENDMETHOD.
+
+  METHOD check_before_save.
+  ENDMETHOD.
+
+  METHOD save.
+  ENDMETHOD.
+
+  METHOD cleanup.
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
