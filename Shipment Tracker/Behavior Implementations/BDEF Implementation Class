@@ -264,7 +264,7 @@ CLASS lsc_ZI_SHIPMENT IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    LOOP AT mapped-shipment ASSIGNING FIELD-SYMBOL(<fs_shipment>).
+    LOOP AT mapped-shipment ASSIGNING FIELD-SYMBOL(<fs_shipment>) WHERE Shipmentid IS NOT INITIAL.
       lv_shipmentid_max += 1.
       lv_shipmentid_max = |{ lv_shipmentid_max ALPHA =  IN }|.
       <fs_shipment>-%key-Shipmentid = lv_shipmentid_max.
