@@ -1,0 +1,19 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Consumption View for Ticket Activity'
+@Metadata.ignorePropagatedAnnotations: true
+@Metadata.allowExtensions: true
+define view entity ZRJ_C_ACTIVITY
+  as projection on ZRJ_I_ACTIVITY
+{
+  key TicketId,
+  key ActivityUuid,
+      Comments,
+      CreatedBy,
+      CreatedAt,
+      LastChangedBy,
+      LastChangedAt,
+      LocalLastChangedAt,
+
+      /* Associations */
+      _TktInfo : redirected to parent ZRJ_C_TKT_INFO
+}
