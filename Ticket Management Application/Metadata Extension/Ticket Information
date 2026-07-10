@@ -1,0 +1,99 @@
+@Metadata.layer: #CORE
+@Search.searchable: true
+@UI.headerInfo: { typeName: 'Ticket',
+                  typeNamePlural: 'Tickets',
+                  title: { type: #STANDARD, value: 'TicketId' },
+                  description: { value: 'Tittle' } }
+annotate view ZRJ_C_TKT_INFO with
+{
+  @UI.facet: [{ id: 'Priority',
+                position: 10,
+                purpose: #HEADER,
+                type: #DATAPOINT_REFERENCE,
+                targetQualifier: 'Priority' },
+              { id: 'Category',
+                position: 20,
+                purpose: #HEADER,
+                type: #DATAPOINT_REFERENCE,
+                targetQualifier: 'Category' },
+              { id: 'Status',
+                position: 30,
+                purpose: #HEADER,
+                type: #DATAPOINT_REFERENCE,
+                targetQualifier: 'Status' },
+              { id: 'TicketInfo',
+                label: 'Ticket Information',
+                position: 10,
+                purpose: #STANDARD,
+                type: #IDENTIFICATION_REFERENCE },
+              { id: 'AgentSolution',
+                label: 'Agent Solution',
+                position: 20,
+                purpose: #STANDARD,
+                type: #FIELDGROUP_REFERENCE,
+                targetQualifier: 'AgentSolutionGrp' },
+              { label: 'Ticket Activity',
+                id: 'TicketActivity',
+                purpose: #STANDARD,
+                type: #LINEITEM_REFERENCE,
+                position: 30,
+                targetElement: '_TktActivity'
+              }]
+
+  @UI: { lineItem: [{ position: 10, label: 'Ticket ID' }],
+         identification: [{ position: 10, label: 'Ticket ID' },
+                          { type: #FOR_ACTION, dataAction: 'ai_analysis', label: 'Run AI Analysis' },
+                          { type: #FOR_ACTION, dataAction: 'add_comments', label: 'Add Comments' }] }
+  @Search.defaultSearchElement: true
+  TicketId;
+  @UI: { lineItem: [{ position: 20, label: 'Tittle' }],
+         identification: [{ position: 20, label: 'Tittle' }] }
+  @Search.defaultSearchElement: true
+  @Search.fuzzinessThreshold: 0.2 
+  Tittle;
+    @UI: { lineItem: [{ position: 30, label: 'Affected User Email' }],
+         identification: [{ position: 30, label: 'Affected User Email' }] }
+  @Search.defaultSearchElement: true
+  @Search.fuzzinessThreshold: 0.8 
+  UserEmail;
+    @UI: { lineItem: [{ position: 40, label: 'Category' }],
+         identification: [{ position: 40, label: 'Category' }],
+         dataPoint: { qualifier: 'Category', title: 'Category' }}
+  Category;
+  @UI: { lineItem: [{ position: 50, label: 'Full Description' }],
+         identification: [{ position: 50, label: 'Full Description' }] }
+  @UI.multiLineText: true
+  @Search.fuzzinessThreshold: 0.2 
+  FullDescription;
+  @UI: { lineItem: [{ position: 60, label: 'Status' }],
+         identification: [{ position: 60, label: 'Status' }],
+         selectionField: [{ position: 10}],
+         dataPoint: { qualifier: 'Status', title: 'Status' } }
+  Status;
+  @UI: { lineItem: [{ position: 70, label: 'Priority' }],
+         identification: [{ position: 70, label: 'Priority' }],
+         selectionField: [{ position: 20 }],
+         dataPoint: { qualifier: 'Priority', title: 'Priority' } }
+  Priority;
+  @UI: { lineItem: [{ position: 80, label: 'AI Solution' }],
+         identification: [{ position: 80, label: 'AI Solution' }] }
+  @UI.multiLineText: true
+  AISolution;
+  @UI: { lineItem: [{ position: 90, label: 'Agent Solution' }],
+        // identification: [{ position: 90, label: 'Agent Solution' }]
+         fieldGroup: [{ position: 10, qualifier: 'AgentSolutionGrp' }] }
+  @UI.multiLineText: true
+  AgentSolution;
+  @UI: { lineItem: [{ position: 100, label: 'Ticket Created By' }],
+         identification: [{ position: 100, label: 'Ticket Created By' }] }
+  CreatedBy;
+  @UI: { lineItem: [{ position: 110, label: 'Ticket Created At' }],
+         identification: [{ position: 110, label: 'Ticket Created At' }] }
+  CreatedAt;
+  @UI.hidden: true
+  LastChangedBy;
+  @UI.hidden: true
+  LastChangedAt;
+  @UI.hidden: true
+  LocalLastChangedAt;
+}
