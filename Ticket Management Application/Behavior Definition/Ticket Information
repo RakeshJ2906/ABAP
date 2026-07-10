@@ -1,0 +1,94 @@
+managed implementation in class zbp_rj_i_tkt_info unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZRJ_I_TKT_INFO alias TicketInfo
+persistent table zrj_tb_tkt_info
+draft table zdtb_tkt_info
+lock master
+total etag LocalLastChangedAt
+authorization master ( global, instance )
+late numbering
+
+with additional save
+//etag master <field_name>
+{
+  create;
+  update;
+  delete;
+
+  association _TktActivity { create; with draft; }
+
+  field ( readonly )
+  TicketId,
+  Category,
+  Priority,
+  AISolution,
+  CreatedBy,
+  CreatedAt;
+
+  field( features : instance ) UserEmail;
+
+  field ( recommendations ) Status;
+  recommendation function DefaultStatus;
+
+  action ( authorization : instance, features : instance ) ai_analysis result [1] $self;
+  action ( features : instance ) add_comments parameter ZRJ_A_COMMENTS result [1] $self;
+
+  side effects { recommendation function DefaultStatus executed on field Tittle;
+                 action add_comments affects entity _TktActivity; }
+
+  draft action Activate optimized;
+  draft action Edit;
+  draft action Resume;
+  draft action Discard;
+  draft determine action Prepare;
+
+  mapping for zrj_tb_tkt_info
+    {
+      TicketId           = ticket_id;
+      Tittle             = tittle;
+      FullDescription    = full_description;
+      Status             = status;
+      Priority           = priority;
+      Category           = category;
+      UserEmail          = user_email;
+      AISolution         = ai_solution;
+      AgentSolution      = agent_solution;
+      CreatedBy          = created_by;
+      CreatedAt          = created_at;
+      LastChangedBy      = last_changed_by;
+      LastChangedAt      = last_changed_at;
+      LocalLastChangedAt = local_last_changed_at;
+    }
+}
+
+define behavior for ZRJ_I_ACTIVITY alias TicketActivity
+persistent table zrj_tb_activity
+draft table zdtb_tkt_actv
+lock dependent by _TktInfo
+authorization dependent by _TktInfo
+late numbering
+{
+  update;
+  delete;
+
+  association _TktInfo { with draft; }
+
+  field ( readonly ) TicketId, ActivityUuid;
+
+  //field ( numbering : managed ) ActivityUuid;
+
+  mapping for zrj_tb_activity
+    {
+      TicketId           = ticket_id;
+      ActivityUuid       = activity_uuid;
+      Comments           = comments;
+      CreatedBy          = created_by;
+      CreatedAt          = created_at;
+      LastChangedBy      = last_changed_by;
+      LastChangedAt      = last_changed_at;
+      LocalLastChangedAt = local_last_changed_at;
+    }
+
+}
