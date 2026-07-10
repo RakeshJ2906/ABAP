@@ -1,0 +1,5 @@
+@EndUserText.label: 'SD for Ticket Info'
+define service ZRJ_TICKET_MANAGEMENT_SRV {
+  expose ZRJ_C_TKT_INFO as TicketInfo;
+  expose ZRJ_C_ACTIVITY as TicketActivity;
+}
