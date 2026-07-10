@@ -1,0 +1,24 @@
+@EndUserText.label : 'Ticket Information'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zrj_tb_tkt_info {
+
+  key client            : abap.clnt not null;
+  key ticket_id         : abap.char(10) not null;
+  tittle                : abap.char(30);
+  full_description      : abap.string(0);
+  status                : abap.char(30);
+  priority              : abap.char(10);
+  category              : abap.char(10);
+  user_email            : abap.char(255);
+  ai_solution           : abap.string(0);
+  agent_solution        : abap.string(0);
+  created_by            : syuname;
+  created_at            : timestampl;
+  last_changed_by       : syuname;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}
