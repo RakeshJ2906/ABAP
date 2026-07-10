@@ -82,7 +82,7 @@ CLASS lhc_TicketInfo IMPLEMENTATION.
 
 
     DATA(lo_ai_model_details) = zrj_ai_model_details=>get_instance( ).
-    lo_ai_model_details->gv_api_key = 'AIzaSyAEcg95XYnI7F_kh9zGI1WGH8QS5vaian4'.
+    lo_ai_model_details->gv_api_key = ''.
     lo_ai_model_details->gv_api_url = 'https://generativelanguage.googleapis.com'.
     lo_ai_model_details->gv_model = 'gemini-2.5-flash-lite'.
     lo_ai_model_details->gv_api_version = '/v1beta/models/'.
