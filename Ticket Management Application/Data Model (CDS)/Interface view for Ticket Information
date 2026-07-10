@@ -1,0 +1,30 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Interface View for Ticket Info'
+@Metadata.ignorePropagatedAnnotations: true
+define root view entity ZRJ_I_TKT_INFO
+  as select from zrj_tb_tkt_info
+  composition [*] of ZRJ_I_ACTIVITY as _TktActivity
+{
+  key ticket_id             as TicketId,
+      tittle                as Tittle,
+      full_description      as FullDescription,
+      status                as Status,
+      priority              as Priority,
+      category              as Category,
+      user_email            as UserEmail,
+      ai_solution           as AISolution,
+      agent_solution        as AgentSolution,
+      @Semantics.user.createdBy: true
+      created_by            as CreatedBy,
+      @Semantics.systemDateTime.createdAt: true
+      created_at            as CreatedAt,
+      @Semantics.user.lastChangedBy: true
+      last_changed_by       as LastChangedBy,
+      @Semantics.systemDateTime.lastChangedAt: true
+      last_changed_at       as LastChangedAt,
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at as LocalLastChangedAt,
+
+      /*associations*/
+      _TktActivity
+}
