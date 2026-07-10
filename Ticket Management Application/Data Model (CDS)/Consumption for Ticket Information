@@ -1,0 +1,27 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Consumption View for Ticket Info'
+@Metadata.ignorePropagatedAnnotations: false
+@Metadata.allowExtensions: true
+define root view entity ZRJ_C_TKT_INFO
+  provider contract transactional_query
+  as projection on ZRJ_I_TKT_INFO
+{
+  key TicketId,
+      Tittle,
+      FullDescription,
+      Status,
+      Priority,
+      Category,
+      UserEmail,
+      AISolution,
+      AgentSolution,
+      CreatedBy,
+      CreatedAt,
+      LastChangedBy,
+      LastChangedAt,
+      LocalLastChangedAt,
+
+      /*Associations*/
+      _TktActivity : redirected to composition child ZRJ_C_ACTIVITY
+}
