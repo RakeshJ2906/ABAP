@@ -1,0 +1,25 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Interface View for Ticket Activity'
+@Metadata.ignorePropagatedAnnotations: true
+define view entity ZRJ_I_ACTIVITY
+  as select from zrj_tb_activity
+  association to parent ZRJ_I_TKT_INFO as _TktInfo on $projection.TicketId = _TktInfo.TicketId
+{
+  key ticket_id             as TicketId,
+  key activity_uuid         as ActivityUuid,
+      comments              as Comments,
+      @Semantics.user.createdBy: true
+      created_by            as CreatedBy,
+      @Semantics.systemDateTime.createdAt: true
+      created_at            as CreatedAt,
+      @Semantics.user.lastChangedBy: true
+      last_changed_by       as LastChangedBy,
+      @Semantics.systemDateTime.lastChangedAt: true
+      last_changed_at       as LastChangedAt,
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at as LocalLastChangedAt,
+
+      /*association*/
+      _TktInfo
+}
