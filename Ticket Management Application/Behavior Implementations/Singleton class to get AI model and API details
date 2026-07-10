@@ -1,0 +1,29 @@
+CLASS zrj_ai_model_details DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PRIVATE.
+
+  PUBLIC SECTION.
+
+    CLASS-DATA: gv_api_key     TYPE string,
+                gv_api_url     TYPE string,
+                gv_model       TYPE string,
+                gv_api_version TYPE string.
+
+    CLASS-METHODS: get_instance
+      RETURNING VALUE(ro_instance) TYPE REF TO zrj_ai_model_details.
+
+  PROTECTED SECTION.
+
+  PRIVATE SECTION.
+    CLASS-DATA: go_instance TYPE REF TO zrj_ai_model_details.
+ENDCLASS.
+
+CLASS zrj_ai_model_details IMPLEMENTATION.
+  METHOD get_instance.
+    IF go_instance IS NOT BOUND.
+      go_instance = NEW #( ).
+    ENDIF.
+    ro_instance = go_instance.
+  ENDMETHOD.
+ENDCLASS.
