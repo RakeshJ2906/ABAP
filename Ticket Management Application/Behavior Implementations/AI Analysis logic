@@ -1,0 +1,232 @@
+CLASS zrj_tkt_ai_analysis DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC.
+
+  PUBLIC SECTION.
+
+    TYPES: BEGIN OF ty_ticket_input,
+             tittle           TYPE string,
+             full_description TYPE string,
+           END OF ty_ticket_input,
+
+           BEGIN OF ty_ai_analysis,
+             category TYPE string,
+             priority TYPE string,
+             solution TYPE string,
+           END OF ty_ai_analysis.
+
+    METHODS: constructor.
+
+    METHODS: ai_analysis IMPORTING im_ticket_input TYPE ty_ticket_input
+                         EXPORTING ex_ai_analysis  TYPE ty_ai_analysis.
+
+  PROTECTED SECTION.
+
+  PRIVATE SECTION.
+
+    CLASS-DATA: gv_api_key     TYPE string,
+                gv_api_url     TYPE string,
+                gv_model       TYPE string,
+                gv_api_version TYPE string.
+
+    CLASS-METHODS build_payload
+      IMPORTING
+        im_ticket_input   TYPE ty_ticket_input
+      RETURNING
+        VALUE(rv_payload) TYPE string.
+
+    CLASS-METHODS parse_response
+      IMPORTING
+        im_response      TYPE string
+      RETURNING
+        VALUE(rs_result) TYPE ty_ai_analysis.
+
+ENDCLASS.
+
+
+
+CLASS zrj_tkt_ai_analysis IMPLEMENTATION.
+
+  METHOD constructor.
+    DATA(lo_ai_model_details) = zrj_ai_model_details=>get_instance( ).
+    gv_api_key = lo_ai_model_details->gv_api_key.
+    gv_api_url = lo_ai_model_details->gv_api_url.
+    gv_model = lo_ai_model_details->gv_model.
+    gv_api_version = lo_ai_model_details->gv_api_version.
+  ENDMETHOD.
+
+  METHOD ai_analysis.
+
+    DATA: lv_payload  TYPE string,
+          lv_response TYPE string.
+
+    DATA(lv_path) = gv_api_version && gv_model && ':generateContent?key='
+                    && gv_api_key.
+
+    TRY.
+        DATA(lo_destination) = cl_http_destination_provider=>create_by_url( i_url = gv_api_url ).
+
+        DATA(lo_client) = cl_web_http_client_manager=>create_by_http_destination( i_destination = lo_destination ).
+
+        DATA(lo_request) = lo_client->get_http_request( ).
+
+        lo_request->set_header_field( i_name  = '~request_uri'
+                                      i_value = lv_path ).
+
+        lo_request->set_header_field( i_name  = 'Content-Type'
+                                      i_value = 'application/json' ).
+
+        CLEAR: lv_payload.
+        lv_payload = build_payload( im_ticket_input ).
+        lo_request->set_text( lv_payload ).
+
+        CLEAR: lv_response.
+        lv_response = lo_client->execute( if_web_http_client=>post )->get_text( ).
+
+        ex_ai_analysis = parse_response( lv_response ).
+
+      CATCH cx_http_dest_provider_error INTO DATA(lo_dest_error).
+      CATCH cx_web_http_client_error INTO DATA(lo_client_error).
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD build_payload.
+
+    TYPES: BEGIN OF ty_part,
+             text TYPE string,
+           END OF ty_part.
+
+    TYPES: BEGIN OF ty_content,
+             parts TYPE STANDARD TABLE OF ty_part WITH DEFAULT KEY,
+           END OF ty_content.
+
+    TYPES: BEGIN OF ty_gen_config,
+             maxOutputTokens TYPE i,
+             temperature     TYPE f,
+           END OF ty_gen_config.
+
+    TYPES: BEGIN OF ty_request,
+             contents         TYPE STANDARD TABLE OF ty_content WITH DEFAULT KEY,
+             generationConfig TYPE ty_gen_config,
+           END OF ty_request.
+
+    DATA: ls_request TYPE ty_request,
+          ls_content TYPE ty_content,
+          ls_part    TYPE ty_part.
+
+
+    DATA(lv_prompt) = 'You are a intelligent ticket resolution AI assistant.'
+                       && 'Analyze the below ticket details.'
+                       && 'Respond ONLY with a raw JSON object.'
+                       && 'No markdown. No code blocks. No backticks. No explanation.'  "stronger instruction
+                       && 'Start your response directly with { and end with } and give only below 3 fields in the response.'
+                       && 'Use exactly this structure: '
+                       && '{"category":"Ticket Category like Technical or General etc.",'
+                       && '"priority":"Low or Medium or High",'
+                       && '"solution":"brief the solution that you think based of your assessment"}'
+                       && 'Ticket details: '
+                       && 'Tittle: ' && im_ticket_input-tittle && '.'
+                       && 'Full Description : ' && im_ticket_input-full_description && '.'.
+
+    DATA(lv_escaped) = lv_prompt.
+    REPLACE ALL OCCURRENCES OF '\' IN lv_escaped WITH '\\'.
+    REPLACE ALL OCCURRENCES OF '"' IN lv_escaped WITH '\"'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline
+                             IN lv_escaped WITH '\n'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf
+                             IN lv_escaped WITH '\n'.
+
+    "Build JSON manually to preserve exact camelCase field names
+    rv_payload = '{'
+                 && '"contents":[{'
+                 &&   '"parts":[{'
+                 &&     '"text":"' && lv_escaped && '"'
+                 &&   '}]'
+                 && '}],'
+                 && '"generationConfig":{'
+                 &&   '"maxOutputTokens":512,'
+                 &&   '"temperature":0.2'
+                 && '}'
+                 && '}'.
+  ENDMETHOD.
+
+  METHOD parse_response.
+
+    TYPES: BEGIN OF ty_part,
+             text TYPE string,
+           END OF ty_part.
+
+    TYPES: BEGIN OF ty_content,
+             parts TYPE STANDARD TABLE OF ty_part WITH DEFAULT KEY,
+           END OF ty_content.
+
+    TYPES: BEGIN OF ty_candidate,
+             content TYPE ty_content,
+           END OF ty_candidate.
+
+    TYPES: BEGIN OF ty_gemini_response,
+             candidates TYPE STANDARD TABLE OF ty_candidate WITH DEFAULT KEY,
+           END OF ty_gemini_response.
+
+    DATA: ls_gemini_resp TYPE ty_gemini_response,
+          lv_inner_text  TYPE string.
+
+    "Step 1: De-serialize the outer Gemini response envelope
+    /ui2/cl_json=>deserialize(
+      EXPORTING
+        json        = im_response
+        pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+      CHANGING
+        data        = ls_gemini_resp
+    ).
+
+    "Step 2: Navigate to candidates[0].content.parts[0].text
+    READ TABLE ls_gemini_resp-candidates INDEX 1 INTO DATA(ls_candidate).
+    IF sy-subrc <> 0.
+      rs_result-solution = 'No candidates in Gemini response'.
+      RETURN.
+    ENDIF.
+    READ TABLE ls_candidate-content-parts INDEX 1 INTO DATA(ls_part).
+    IF sy-subrc <> 0 OR ls_part-text IS INITIAL.
+      rs_result-solution = 'Empty text in Gemini response'.
+      RETURN.
+    ENDIF.
+
+    lv_inner_text = ls_part-text.
+
+    "Step 3: Robustly strip mark-down code blocks
+    " Gemini returns: ```json\n{...}\n```
+    " We need to extract just the {…} part
+
+    "Remove opening ```json or ``` with optional newline
+    REPLACE REGEX '```[a-zA-Z]*\n?' IN lv_inner_text WITH ''.
+
+    "Remove closing ``` with optional newline
+    REPLACE ALL OCCURRENCES OF '```' IN lv_inner_text WITH ''.
+
+    "Remove any literal \n characters Gemini adds
+    REPLACE ALL OCCURRENCES OF '\n' IN lv_inner_text WITH ''.
+
+    "Remove actual newline and carriage return characters
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline
+                             IN lv_inner_text WITH ''.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf
+                             IN lv_inner_text WITH ''.
+
+    "Trim leading/trailing whitespace
+    CONDENSE lv_inner_text.
+
+    "Step 4: De-serialize the clean inner JSON into our result structure
+    /ui2/cl_json=>deserialize(
+      EXPORTING
+        json        = lv_inner_text
+        pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+      CHANGING
+        data        = rs_result
+    ).
+
+  ENDMETHOD.
+
+ENDCLASS.
