@@ -1,0 +1,18 @@
+@EndUserText.label : 'Ticket Activity'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zrj_tb_activity {
+
+  key client            : abap.clnt not null;
+  key ticket_id         : abap.char(10) not null;
+  key activity_uuid     : sysuuid_x16 not null;
+  comments              : abap.string(0);
+  created_by            : syuname;
+  created_at            : timestampl;
+  last_changed_by       : syuname;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}
