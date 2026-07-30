@@ -1,0 +1,94 @@
+CLASS zcl_ce_ticket_form DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_rap_query_provider.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zcl_ce_ticket_form IMPLEMENTATION.
+
+
+  METHOD if_rap_query_provider~select.
+
+    DATA: lt_form_data TYPE TABLE OF zrj_ce_ticket_form,
+          ls_form_data TYPE zrj_ce_ticket_form.
+
+*    DATA: lv_ticket_id TYPE c LENGTH 10 VALUE '0000000001'.
+
+    TRY.
+        DATA(lt_filter_conditions) = io_request->get_filter(  )->get_as_ranges(  ).
+        LOOP AT lt_filter_conditions INTO DATA(ls_filter).
+          IF ls_filter-name = 'TICKETID'.
+            READ TABLE ls_filter-range INTO DATA(ls_range) INDEX 1.
+            IF sy-subrc IS INITIAL.
+              DATA(lv_ticket_id) = ls_range-low.
+            ENDIF.
+          ENDIF.
+        ENDLOOP.
+
+        DATA(lo_paging) = io_request->get_paging(  )->get_offset(  ).
+        DATA(lo_filters) = io_request->get_filter(  )->get_as_sql_string(  ).
+      CATCH cx_rap_query_filter_no_range INTO DATA(ls_ex_no_range).
+    ENDTRY.
+
+    IF lv_ticket_id IS INITIAL.
+      lv_ticket_id = '0000000001'.
+    ENDIF.
+
+    TRY.
+        DATA(lo_reader) = cl_fp_form_reader=>create_form_reader( iv_formname = 'ZRJ_TICKET_FORM' ).
+        DATA(lv_layout) = lo_reader->get_layout(  ).
+      CATCH cx_fp_form_reader INTO DATA(ls_cx_fp_form_reader).
+    ENDTRY.
+
+    TRY.
+        DATA(lo_fdp_api) = cl_fp_fdp_services=>get_instance(
+           iv_service_definition = 'ZRJ_TICKET_MANAGEMENT_SRV'
+           iv_root_node = 'ZRJ_C_TKT_INFO' ).
+
+        DATA(lt_keys) = lo_fdp_api->get_keys(  ).
+        lt_keys[ name = 'TICKETID' ]-value = lv_ticket_id.
+
+        DATA(lt_additional_keys) = VALUE if_fp_fdp_api=>tt_select_keys( (
+                                           name = 'IsActiveEntity'
+                                           value = abap_true          "Set to abap_true if you specifically want active data
+                                           data_type = 'ABAP_BOOL' ) ).
+
+        DATA(lv_xml) = lo_fdp_api->read_to_xml_v2(
+                                     it_select = lt_keys
+                                     it_select_add = lt_additional_keys ).
+
+      CATCH cx_fp_fdp_error INTO DATA(ls_cx_fp_fdp_error).
+    ENDTRY.
+
+    TRY.
+        cl_fp_ads_util=>render_pdf(
+        EXPORTING
+         iv_xml_data = lv_xml
+         iv_xdp_layout = lv_layout
+         iv_locale = 'en_US'
+        IMPORTING
+        ev_pdf = DATA(lv_pdf) ).
+      CATCH cx_fp_ads_util INTO DATA(ls_cx_fp_ads_util).
+    ENDTRY.
+
+    CLEAR: ls_form_data.
+    ls_form_data-TicketId = lv_ticket_id.
+    ls_form_data-FileName = 'Ticket_Form.pdf'.
+    ls_form_data-MimeType = 'application/pdf'.
+    ls_form_data-Form = lv_pdf.
+    APPEND ls_form_data TO lt_form_data.
+
+    io_response->set_data( lt_form_data ).
+    io_response->set_total_number_of_records( lines( lt_form_data ) ).
+
+
+  ENDMETHOD.
+ENDCLASS.
