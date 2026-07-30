@@ -1,0 +1,17 @@
+@EndUserText.label: 'CE for Ticket Form'
+@Metadata.allowExtensions: true
+@ObjectModel.query.implementedBy: 'ABAP:ZCL_CE_TICKET_FORM'
+
+define custom entity zrj_ce_ticket_form
+{
+      @UI.lineItem: [{ position: 10 }]
+  key TicketId : abap.char(10);
+      @Semantics.largeObject: { mimeType: 'MimeType', fileName: 'FileName', contentDispositionPreference: #ATTACHMENT }
+      @UI.lineItem: [{ position: 20 }]
+      Form     : abap.rawstring(0);
+      @UI.lineItem: [{ position: 30 }]
+      FileName : abap.char(30);
+      @UI.lineItem: [{ position: 40 }]
+      @Semantics.mimeType: true
+      MimeType : abap.char(30);
+}
