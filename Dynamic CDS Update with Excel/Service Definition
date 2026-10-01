@@ -1,0 +1,4 @@
+@EndUserText.label: 'CDS Update'
+define service ZCDS_UPDATE_SRV {
+  expose ZI_DM_COCKPIT;
+}
