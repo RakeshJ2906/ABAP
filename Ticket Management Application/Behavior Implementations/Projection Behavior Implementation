@@ -1,0 +1,27 @@
+CLASS lhc_TicketInfo DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS augment_create FOR MODIFY
+       entities FOR CREATE TicketInfo.
+
+ENDCLASS.
+
+CLASS lhc_TicketInfo IMPLEMENTATION.
+
+  METHOD augment_create.
+
+    DATA: lt_tkt_defaults TYPE TABLE FOR CREATE zrj_i_tkt_info.
+
+    lt_tkt_defaults = CORRESPONDING #( entities ).
+    LOOP AT lt_tkt_defaults ASSIGNING FIELD-SYMBOL(<fs_tkt_defaults>).
+      <fs_tkt_defaults>-Status = 'Open'.
+      <fs_tkt_defaults>-%control-Status = if_abap_behv=>mk-on.
+    ENDLOOP.
+
+    MODIFY AUGMENTING ENTITIES OF zrj_i_tkt_info
+    ENTITY TicketInfo
+    CREATE FROM lt_tkt_defaults.
+
+  ENDMETHOD.
+
+ENDCLASS.
