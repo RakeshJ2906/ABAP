@@ -1,0 +1,46 @@
+managed implementation in class zbp_i_dm_cockpit unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZI_DM_COCKPIT //alias <alias_name>
+persistent table ztb_dm_cockpit
+draft table zdtb_dm_cockpit
+lock master
+total etag LocalLastChangedAt
+etag master LocalLastChangedAt
+authorization master ( instance )
+//etag master <field_name>
+{
+  create ( authorization : global );
+  update;
+  delete;
+
+  field ( readonly : update ) BusinessObject;
+  field ( readonly ) Template;
+  field ( readonly : create, features : instance ) Attachment;
+
+  action downloadTemplate result [1] $self;
+  action updateObject result [1] $self;
+
+  draft action Edit;
+  draft action Resume;
+  draft action Activate optimized;
+  draft action Discard;
+  draft determine action Prepare { }
+
+  mapping for ztb_dm_cockpit
+    {
+      BusinessObject     = business_object;
+      Template           = template;
+      Attachment         = attachment;
+      Mimetype           = mimetype;
+      Filename           = filename;
+      MimetypeAtt        = mimetype_att;
+      FilenameAtt        = filename_att;
+      CreatedBy          = created_by;
+      CreatedAt          = created_at;
+      LastChangedBy      = last_changed_by;
+      LastChangedAt      = last_changed_at;
+      LocalLastChangedAt = local_last_changed_at;
+    }
+}
