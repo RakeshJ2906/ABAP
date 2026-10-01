@@ -1,25 +1,26 @@
-projection;
+projection implementation in class zbp_rj_c_tkt_info unique;
 strict ( 2 );
 use draft;
-use recommendations;
 use side effects;
 
 define behavior for ZRJ_C_TKT_INFO alias TicketInfo
 {
-  use create;
+  use create( augment );
   use update;
   use delete;
 
-  use association _TktActivity { create; with draft; }
-
   use action ai_analysis;
   use action add_comments;
+  use action generate_form;
+  use action ticket_closure;
 
   use action Activate;
   use action Edit;
   use action Resume;
   use action Discard;
   use action Prepare;
+
+  use association _TktActivity { create; with draft; }
 }
 
 define behavior for ZRJ_C_ACTIVITY alias TicketActivity
