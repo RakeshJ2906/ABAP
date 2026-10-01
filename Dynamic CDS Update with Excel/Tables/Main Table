@@ -1,0 +1,22 @@
+@EndUserText.label : 'Custom DM Cockpit'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table ztb_dm_cockpit {
+
+  key client            : abap.clnt not null;
+  key business_object   : abap.char(30) not null;
+  template              : abap.rawstring(0);
+  attachment            : abap.rawstring(0);
+  mimetype              : abap.char(128);
+  filename              : abap.char(128);
+  mimetype_att          : abap.char(128);
+  filename_att          : abap.char(128);
+  created_by            : syuname;
+  created_at            : timestampl;
+  last_changed_by       : syuname;
+  last_changed_at       : timestampl;
+  local_last_changed_at : timestampl;
+
+}
