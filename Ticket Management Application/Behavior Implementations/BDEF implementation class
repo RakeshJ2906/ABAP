@@ -1,209 +1,32 @@
 CLASS lhc_TicketInfo DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
 
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      keys REQUEST requested_features FOR TicketInfo RESULT result.
+
     METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
-      IMPORTING keys REQUEST requested_authorizations FOR TicketInfo RESULT result.
+      keys REQUEST requested_authorizations FOR TicketInfo RESULT result.
 
     METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
-      IMPORTING REQUEST requested_authorizations FOR TicketInfo RESULT result.
-
-    METHODS ai_analysis FOR MODIFY
-      IMPORTING keys FOR ACTION TicketInfo~ai_analysis RESULT result.
-
-    METHODS DefaultStatus FOR READ
-      IMPORTING keys FOR FUNCTION TicketInfo~DefaultStatus RESULT result.
+      REQUEST requested_authorizations FOR TicketInfo RESULT result.
 
     METHODS add_comments FOR MODIFY
-      IMPORTING keys FOR ACTION TicketInfo~add_comments RESULT result.
-    METHODS get_instance_features FOR INSTANCE FEATURES
-      IMPORTING keys REQUEST requested_features FOR TicketInfo RESULT result.
+       keys FOR ACTION TicketInfo~add_comments RESULT result.
+
+    METHODS ai_analysis FOR MODIFY
+       keys FOR ACTION TicketInfo~ai_analysis RESULT result.
+
+    METHODS generate_form FOR MODIFY
+       keys FOR ACTION TicketInfo~generate_form RESULT result.
+
+    METHODS ticket_closure FOR MODIFY
+       keys FOR ACTION TicketInfo~ticket_closure RESULT result.
+
+    CLASS-METHODS safe_uuid RETURNING VALUE(rv_uuid) TYPE sysuuid_x16.
 
 ENDCLASS.
 
 CLASS lhc_TicketInfo IMPLEMENTATION.
-
-  METHOD get_instance_authorizations.
-
-    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-    ENTITY TicketInfo
-    FIELDS ( Status ) WITH CORRESPONDING #( keys )
-    RESULT DATA(lt_tkt_status)
-    FAILED failed
-    REPORTED reported.
-*
-    LOOP AT lt_tkt_status INTO DATA(ls_tkt_status).
-      IF requested_authorizations-%action-ai_analysis = if_abap_behv=>mk-on.
-        IF ls_tkt_status-Status = 'AI Analysis completed'.
-*          APPEND VALUE #( ticketid = ls_tkt_status-TicketId
-*                %action-ai_analysis = if_abap_behv=>auth-unauthorized ) TO result.
-*          APPEND VALUE #( %tky = ls_tkt_status-%tky
-*                          %fail-cause = if_abap_behv=>cause-unauthorized ) TO failed-ticketinfo.
-*          APPEND VALUE #( %tky = ls_tkt_status-%tky
-*                          %msg = new_message_with_text( severity = if_abap_behv_message=>severity-error
-*                                                        text = 'You are no more authorized for this action' ) ) TO reported-ticketinfo.
-*
-        ENDIF.
-      ENDIF.
-    ENDLOOP.
-
-  ENDMETHOD.
-
-  METHOD get_global_authorizations.
-
-    IF requested_authorizations-%delete = if_abap_behv=>mk-on.
-      result-%delete = if_abap_behv=>auth-allowed.
-    ENDIF.
-
-  ENDMETHOD.
-
-  METHOD ai_analysis.
-
-    TYPES: BEGIN OF ty_ticket_input,
-             tittle           TYPE string,
-             full_description TYPE string,
-           END OF ty_ticket_input,
-
-           BEGIN OF ty_ai_analysis,
-             category TYPE string,
-             priority TYPE string,
-             solution TYPE string,
-           END OF ty_ai_analysis.
-
-    DATA: ls_ticket_input  TYPE ty_ticket_input,
-          ls_ai_analysis   TYPE ty_ai_analysis,
-          lt_ticket_update TYPE TABLE FOR UPDATE zrj_i_tkt_info\\TicketInfo.
-
-    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-    ENTITY TicketInfo
-    ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(lt_ticketinfo)
-    FAILED failed
-    REPORTED reported.
-
-
-    DATA(lo_ai_model_details) = zrj_ai_model_details=>get_instance( ).
-    lo_ai_model_details->gv_api_key = ''.
-    lo_ai_model_details->gv_api_url = 'https://generativelanguage.googleapis.com'.
-    lo_ai_model_details->gv_model = 'gemini-2.5-flash-lite'.
-    lo_ai_model_details->gv_api_version = '/v1beta/models/'.
-    DATA(lo_ai_analysis) = NEW zrj_tkt_ai_analysis( ).
-
-    CLEAR: lt_ticket_update.
-    LOOP AT lt_ticketinfo INTO DATA(ls_ticket_info).
-      CLEAR : ls_ticket_input.
-      ls_ticket_input = VALUE #( tittle = ls_ticket_info-Tittle
-                                 full_description = ls_ticket_info-FullDescription ).
-
-      CLEAR: ls_ai_analysis.
-      lo_ai_analysis->ai_analysis(
-        EXPORTING
-          im_ticket_input = ls_ticket_input
-        IMPORTING
-          ex_ai_analysis = ls_ai_analysis ).
-
-      APPEND VALUE #( %tky = ls_ticket_info-%tky
-                      status = 'AI Analysis completed'
-                      category = ls_ai_analysis-category
-                      priority = ls_ai_analysis-priority
-                      aisolution = ls_ai_analysis-solution ) TO lt_ticket_update.
-    ENDLOOP.
-
-    IF lt_ticket_update IS NOT INITIAL.
-      MODIFY ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-      ENTITY TicketInfo
-      UPDATE FIELDS ( Status Category Priority AISolution )
-      WITH lt_ticket_update
-      FAILED failed
-      REPORTED reported.
-    ENDIF.
-
-    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-    ENTITY TicketInfo
-    ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(lt_updated).
-
-
-    result = VALUE #( FOR ls_updated IN lt_updated
-                      ( %tky = ls_updated-%tky
-                        %param = ls_updated ) ).
-
-  ENDMETHOD.
-
-  METHOD DefaultStatus.
-
-    TYPES: BEGIN OF ty_rec_values,
-             value     TYPE c LENGTH 30,
-             score     TYPE decfloat34,
-             suggested TYPE c LENGTH 1,
-           END OF ty_rEC_VALUES.
-
-    DATA: lt_rec_values TYPE TABLE OF ty_rec_values.
-
-    lt_rec_values = VALUE #( ( value = 'NEW'
-                               score = 99
-                               suggested = abap_true ) ).
-
-*    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-*    ENTITY TicketInfo
-*    ALL FIELDS WITH CORRESPONDING #( keys )
-*    RESULT DATA(lt_ticket_info).
-
-*    LOOP AT lt_ticket_info INTO DATA(ls_tkt_info).
-*
-*      INSERT VALUE #( %tky = ls_tkt_info-%tky
-*                      %param-ticketinfo = VALUE #( status = CORRESPONDING #( lt_rec_values )  ) ) INTO TABLE result.
-*    ENDLOOP.
-
-*    DATA(ls_tkt_info) = lt_ticket_info[ 1 ].
-
-    result = VALUE #( FOR ls_key IN keys ( %tky = ls_key-%tky
-                        %param-ticketinfo = VALUE #( status = CORRESPONDING #( lt_rec_values ) )  ) ).
-
-  ENDMETHOD.
-
-
-  METHOD add_comments.
-
-    LOOP AT keys INTO DATA(ls_key).
-      TRY.
-          DATA(lv_uuid) = cl_system_uuid=>create_uuid_x16_static( ).
-        CATCH cx_uuid_error.
-          "handle exception
-      ENDTRY.
-
-      MODIFY ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-      ENTITY TicketInfo
-      CREATE BY \_TktActivity
-      FIELDS ( TicketId ActivityUuid Comments )
-      WITH VALUE #( ( %tky = ls_key-%tky
-                      %cid_ref = ls_key-%cid_ref
-                      %target = VALUE #( ( %cid = |{ ls_key-%cid_ref }{ 'comments' }{ lv_uuid }|
-                                           TicketId = ls_key-TicketId
-                                           ActivityUuid = lv_uuid
-                                           Comments = ls_key-%param-comments ) )
-                  ) )
-     FAILED failed
-     REPORTED reported.
-    ENDLOOP.
-
-    IF failed IS INITIAL.
-      READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
-      ENTITY TicketInfo
-      BY \_TktActivity
-      ALL FIELDS WITH CORRESPONDING #( keys )
-      RESULT DATA(lt_updated).
-
-      result = VALUE #( FOR ls_updated IN lt_updated
-                        ( %tky = ls_updated-%tky
-                          %param = ls_updated ) ).
-
-      APPEND VALUE #( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information
-                                                    text = 'Comments added' ) ) TO reported-ticketinfo.
-    ENDIF.
-
-
-  ENDMETHOD.
-
 
   METHOD get_instance_features.
 
@@ -215,21 +38,283 @@ CLASS lhc_TicketInfo IMPLEMENTATION.
     REPORTED reported
     FAILED failed.
 
-
     result = VALUE #( FOR ls_tkt_info IN lt_tkt_info
-                       LET lv_ai_analysis_f = COND #( WHEN ls_tkt_info-Status = 'AI Analysis completed'  "Disable based on status
+                      LET lv_ai_analysis_o = COND #( WHEN ls_tkt_info-status = 'AI Analysis completed'
+                                                      OR ls_tkt_info-%is_draft = if_abap_behv=>mk-on
+                                                      OR ls_tkt_info-Status = 'Ticket Closure Requested'
                                                       THEN if_abap_behv=>fc-o-disabled
                                                       ELSE if_abap_behv=>fc-o-enabled )
-                           lv_add_comments_f = COND #( WHEN ls_tkt_info-%is_draft = if_abap_behv=>mk-on  "Disable based on draft condition
-                                                       THEN if_abap_behv=>fc-o-disabled
-                                                       ELSE if_abap_behv=>fc-o-enabled )
-                           lv_user_email_f = COND #( WHEN ls_tkt_info-TicketId IS NOT INITIAL   "Read only in edit condition
-                                                     THEN if_abap_behv=>fc-f-read_only
-                                                     ELSE if_abap_behv=>fc-f-unrestricted )
-                       IN ( %tky = ls_tkt_info-%tky
-                            %action-ai_analysis = lv_ai_analysis_f
-                            %action-add_comments = lv_add_comments_f
-                            %field-UserEmail = lv_user_email_f ) ).
+                          lv_add_comments_o = COND #( WHEN ls_tkt_info-%is_draft = if_abap_behv=>mk-on
+                                                      OR ls_tkt_info-Status = 'Ticket Closure Requested'
+                                                      THEN if_abap_behv=>fc-o-disabled
+                                                      ELSE if_abap_behv=>fc-o-enabled )
+                          lv_user_email_f = COND #( WHEN ls_tkt_info-TicketId IS NOT INITIAL
+                                                    THEN if_abap_behv=>fc-f-read_only
+                                                    ELSE if_abap_behv=>fc-f-unrestricted )
+                          lv_agent_sol_f = COND #( WHEN ls_tkt_info-TicketId IS INITIAL
+                                                   THEN if_abap_behv=>fc-f-read_only
+                                                   ELSE if_abap_behv=>fc-f-unrestricted )
+*                          lv_edit_o = COND #( WHEN ls_tkt_info-Status = 'Ticket Closure Requested'
+*                                              THEN if_abap_behv=>fc-o-disabled
+*                                              ELSE if_abap_behv=>fc-o-enabled )
+                          lv_delete_o = COND #( WHEN ls_tkt_info-Status = 'Ticket Closure Requested'
+                                                THEN if_abap_behv=>fc-o-disabled
+                                                ELSE if_abap_behv=>fc-o-enabled )
+                          lv_gen_form_o = COND #( WHEN ls_tkt_info-Status = 'Ticket Closure Requested'
+                                                  THEN if_abap_behv=>fc-o-disabled
+                                                  ELSE if_abap_behv=>fc-o-enabled )
+                          lv_tkt_close_o = COND #( WHEN ls_tkt_info-Status = 'Ticket Closure Requested'
+                                                   THEN if_abap_behv=>fc-o-disabled
+                                                   ELSE if_abap_behv=>fc-o-enabled )
+                      IN ( %tky = ls_tkt_info-%tky
+                           %action-ai_analysis = lv_ai_analysis_o
+                           %action-add_comments = lv_add_comments_o
+                           %field-UserEmail = lv_user_email_f
+                           %field-AgentSolution = lv_agent_sol_f
+*                           %update = lv_edit_o
+*                           %action-edit = lv_edit_o
+                           %delete = lv_delete_o
+                           %action-generate_form = lv_gen_form_o
+                           %action-ticket_closure = lv_tkt_close_o ) ).
+
+  ENDMETHOD.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD get_global_authorizations.
+  ENDMETHOD.
+
+  METHOD add_comments.
+
+    MODIFY ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    CREATE BY \_TktActivity
+    FIELDS ( TicketId ActivityUuid Comments )
+    WITH VALUE #( FOR ls_key IN keys
+                  LET lv_uuid = lhc_TicketInfo=>safe_uuid( )
+                  IN ( %tky = ls_key-%tky
+                    %cid_ref = ls_key-%cid_ref
+                    %target = VALUE #( ( %cid = |{ ls_key-%cid_ref }{ lv_uuid }|
+                                         TicketId = ls_key-TicketId
+                                         ActivityUuid = lv_uuid
+                                         Comments = ls_key-%param-comments ) )
+                ) )
+    MAPPED DATA(ls_mapped)
+    FAILED DATA(ls_failed)
+    REPORTED DATA(ls_reported).
+
+    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_updated).
+
+    result = VALUE #( FOR ls_updated IN lt_updated
+                          ( %tky = ls_updated-%tky
+                            %param = ls_updated ) ).
+
+    IF ls_failed IS INITIAL.
+      APPEND VALUE #( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information
+                                                    text = 'Comments added' ) ) TO reported-ticketinfo.
+    ELSE.
+      failed-ticketinfo = ls_failed-ticketinfo.
+      reported-ticketinfo = ls_reported-ticketinfo.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD ai_analysis.
+
+    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_updated).
+
+    result = VALUE #( FOR ls_updated IN lt_updated
+                      ( %tky = ls_updated-%tky
+                        %param = ls_updated ) ).
+
+    APPEND VALUE #( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information
+                                text = 'Implementation Not added yet' ) ) TO reported-ticketinfo.
+
+  ENDMETHOD.
+
+  METHOD safe_uuid.
+    TRY.
+        rv_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+      CATCH cx_uuid_error.
+    ENDTRY.
+  ENDMETHOD.
+
+  METHOD generate_form.
+
+    DATA: lt_ticket_update TYPE TABLE FOR UPDATE zrj_i_tkt_info\\TicketInfo.
+
+    LOOP AT keys INTO DATA(ls_key).
+
+      TRY.
+          DATA(lo_form_reader) = cl_fp_form_reader=>create_form_reader( iv_formname = 'ZRJ_FO_TICKET_INFO' ).
+          DATA(lv_layout) = lo_form_reader->get_layout( ).
+        CATCH cx_fp_form_reader INTO DATA(ls_cx_fp_form_reader).
+      ENDTRY.
+
+      TRY.
+          DATA(lo_fdp_api) = cl_fp_fdp_services=>get_instance( iv_service_definition = 'ZRJ_TICKET_MANAGEMENT_SRV'
+                                                               iv_root_node = 'ZRJ_C_TKT_INFO' ).
+
+          DATA(lt_keys) = lo_fdp_api->get_keys( ).
+          lt_keys[ name = 'TICKETID' ]-value = ls_key-TicketId.
+
+          DATA(lt_additional_keys) = VALUE if_fp_fdp_api=>tt_select_keys( ( name = 'IsActiveEntity'
+                                                                            value = abap_true          "Set to abap_true if you specifically want active data
+                                                                            data_type = 'ABAP_BOOL' ) ).
+
+          DATA(lv_xml) = lo_fdp_api->read_to_xml_v2( it_select = lt_keys
+                                                     it_select_add = lt_additional_keys ).
+        CATCH cx_fp_fdp_error INTO DATA(ls_cx_fp_fdp_error).
+      ENDTRY.
+
+      TRY.
+          cl_fp_ads_util=>render_pdf(
+          EXPORTING
+           iv_xml_data = lv_xml
+           iv_xdp_layout = lv_layout
+           iv_locale = 'en_US'
+          IMPORTING
+           ev_pdf = DATA(lv_pdf) ).
+        CATCH cx_fp_ads_util INTO DATA(ls_cx_fp_ads_util).
+      ENDTRY.
+
+      CLEAR: lt_ticket_update.
+      APPEND VALUE #( %tky = ls_key-%tky
+                      form = lv_pdf
+                      filename = 'Ticket_Details.pdf'
+                      mimetype = 'application/pdf' ) TO lt_ticket_update.
+
+      MODIFY ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+      ENTITY TicketInfo
+      UPDATE FIELDS ( Form FileName MimeType )
+      WITH lt_ticket_update
+      FAILED failed
+      REPORTED reported.
+
+    ENDLOOP.
+
+    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_updated).
+
+    result = VALUE #( FOR ls_updated IN lt_updated
+                      ( %tky = ls_updated-%tky
+                        %param = ls_updated ) ).
+
+  ENDMETHOD.
+
+  METHOD ticket_closure.
+
+    CONSTANTS:
+      lv_token_url    TYPE string VALUE 'https://ebddc195trial.authentication.us10.hana.ondemand.com/oauth/token',
+      lv_client_id    TYPE string VALUE 'sb-37352e44-96ee-43ec-91a3-746cdaef2dba!b703376|xsuaa!b49390',
+      lv_client_sec   TYPE string VALUE '8d71a9be-2a4b-41ca-bed0-e52b3ee41d1d$rrmf4CeX1t72T060qx91mPrgUIM70u4pMsZ-SaBqOKY=',
+      lv_workflow_url TYPE string VALUE 'https://spa-api-gateway-bpi-us-prod.cfapps.us10.hana.ondemand.com/workflow/rest/v1/workflow-instances'.
+
+    DATA: lt_ticket_update TYPE TABLE FOR UPDATE zrj_i_tkt_info\\TicketInfo.
+
+    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_ticket_info).
+
+    LOOP AT lt_ticket_info INTO DATA(ls_tkt_info).
+
+      TRY.
+          " =================================================================
+          " STEP 1: FETCH OAUTH 2.0 ACCESS TOKEN
+          " =================================================================
+          DATA(lo_auth_dest) = cl_http_destination_provider=>create_by_url( lv_token_url ).
+          DATA(lo_auth_client) = cl_web_http_client_manager=>create_by_http_destination( lo_auth_dest ).
+          DATA(lo_auth_req) = lo_auth_client->get_http_request( ).
+
+          " Set OAuth payload requirements
+          lo_auth_req->set_header_field( i_name = 'Content-Type' i_value = 'application/x-www-form-urlencoded' ).
+          lo_auth_req->set_authorization_basic( i_username = lv_client_id i_password = lv_client_sec ).
+          lo_auth_req->set_text( 'grant_type=client_credentials' ).
+
+          DATA(lo_auth_res) = lo_auth_client->execute( if_web_http_client=>post ).
+
+          IF lo_auth_res->get_status( )-code <> 200.
+            CONTINUE. " Handle authentication failure
+          ENDIF.
+
+          " Parse token using regex or standard JSON de-serialize
+          DATA(lv_auth_json) = lo_auth_res->get_text( ).
+          FIND REGEX '"access_token":"([^"]+)"' IN lv_auth_json SUBMATCHES DATA(lv_access_token).
+
+          " =================================================================
+          " STEP 2: TRIGGER THE WORKFLOW (BPA)
+          " =================================================================
+          DATA(lo_wf_dest) = cl_http_destination_provider=>create_by_url( lv_workflow_url ).
+          DATA(lo_wf_client) = cl_web_http_client_manager=>create_by_http_destination( lo_wf_dest ).
+          DATA(lo_wf_req) = lo_wf_client->get_http_request( ).
+
+          " Set Request Headers
+          lo_wf_req->set_header_field( i_name = 'Content-Type' i_value = 'application/json' ).
+          lo_wf_req->set_header_field( i_name = 'Authorization' i_value = |Bearer { lv_access_token }| ).
+          "lo_wf_req->set_header_field( i_name = 'environmentId' i_value = 'rjpoc' ).
+
+
+          " Build exact JSON payload matching your schema (keeping the typo 'Tittle')
+          DATA(lv_json_payload) =
+            |\{| &&
+            |  "definitionId": "us10.ebddc195trial.ticketclosure.process6J7KZ",| &&
+            |  "context": \{| &&
+            |    "TicketID": "{ ls_tkt_info-TicketID }",| &&
+            |    "Tittle": "{ ls_tkt_info-Tittle }",| &&
+            |    "UserEmail": "{ ls_tkt_info-UserEmail }",| &&
+            |    "FullDescription": "{ ls_tkt_info-FullDescription }",| &&
+            |    "AgentSolution": "{ ls_tkt_info-AgentSolution }"| &&
+            |  \}| &&
+            |\}|.
+
+          lo_wf_req->set_text( lv_json_payload ).
+
+          " Execute Workflow Instance Creation
+          DATA(lo_wf_res) = lo_wf_client->execute( if_web_http_client=>post ).
+          DATA(lv_status) = lo_wf_res->get_status( ).
+
+          IF lv_status-code = 201.
+            " Success logic
+            APPEND VALUE #( %tky = ls_tkt_info-%tky
+                            status = 'Ticket Closure Requested' ) TO lt_ticket_update.
+          ELSE.
+            " Error logic using lo_wf_res->get_text( )
+          ENDIF.
+
+        CATCH cx_http_dest_provider_error cx_web_http_client_error.
+          " Handle communication exceptions here
+      ENDTRY.
+
+    ENDLOOP.
+
+    MODIFY ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    UPDATE FIELDS ( Status )
+    WITH lt_ticket_update
+    FAILED failed
+    REPORTED reported.
+
+    READ ENTITIES OF zrj_i_tkt_info IN LOCAL MODE
+    ENTITY TicketInfo
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_updated).
+
+    result = VALUE #( FOR ls_updated IN lt_updated
+                          ( %tky = ls_updated-%tky
+                            %param = ls_updated ) ).
+
+    APPEND VALUE #( %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information
+                            text = 'Ticket Closure Requested' ) ) TO reported-ticketinfo.
 
   ENDMETHOD.
 
@@ -242,8 +327,6 @@ CLASS lsc_ZRJ_I_TKT_INFO DEFINITION INHERITING FROM cl_abap_behavior_saver.
 
     METHODS cleanup_finalize REDEFINITION.
 
-    METHODS save_modified REDEFINITION.
-
 ENDCLASS.
 
 CLASS lsc_ZRJ_I_TKT_INFO IMPLEMENTATION.
@@ -252,50 +335,40 @@ CLASS lsc_ZRJ_I_TKT_INFO IMPLEMENTATION.
 
     DATA: lv_new_ticket_id TYPE c LENGTH 10.
 
+    " =================================================================
+    " Numbering for Ticket Info Entity
+    " =================================================================
     IF mapped-ticketinfo IS NOT INITIAL.
-      DATA(lt_tkt_info) = mapped-ticketinfo.
-      "Remove instances where Ticket ID is already available
-      DELETE lt_tkt_info WHERE TicketId IS NOT INITIAL.
-    ENDIF.
+      DATA(lt_ticket_info) = mapped-ticketinfo.
+      DELETE lt_ticket_info WHERE TicketId IS NOT INITIAL.
 
-    IF lt_tkt_info IS NOT INITIAL.
-      "Get Max Ticket ID from active table
-      SELECT SINGLE FROM zrj_tb_tkt_info
-      FIELDS MAX( ticket_id )
-      INTO @DATA(max_tkt_id).
-      "Get Max Ticket ID from draft table
-      SELECT SINGLE FROM zdtb_tkt_info
-      FIELDS MAX( ticketid )
-      INTO @DATA(max_drat_tkt_id).
-      IF max_drat_tkt_id > max_tkt_id.
-        max_tkt_id = max_drat_tkt_id.
+      IF lt_ticket_info IS NOT INITIAL.
+        "Get Max TicketId from database table
+        SELECT SINGLE FROM zrj_tb_tkt_info
+        FIELDS MAX( ticket_id )
+        INTO @DATA(lv_max_id).
       ENDIF.
 
       LOOP AT mapped-ticketinfo ASSIGNING FIELD-SYMBOL(<fs_tkt_info>) WHERE TicketId IS INITIAL.
-        lv_new_ticket_id = max_tkt_id + 1.
+        lv_new_ticket_id = lv_max_id + 1.
         lv_new_ticket_id = |{ lv_new_ticket_id ALPHA = IN }|.
         <fs_tkt_info>-%key-TicketId = lv_new_ticket_id.
-        max_tkt_id += 1.
+        lv_max_id += 1.
       ENDLOOP.
     ENDIF.
 
-    IF mapped-ticketactivity IS NOT INITIAL.
-      LOOP AT mapped-ticketactivity ASSIGNING FIELD-SYMBOL(<fs_tkt_activity>).
-        DATA(ls_tkt_activity) = <fs_tkt_activity>-%tmp.
-        <fs_tkt_activity>-%key-TicketId = ls_tkt_activity-TicketId.
-        <fs_tkt_activity>-ActivityUuid = ls_tkt_activity-ActivityUuid.
-      ENDLOOP.
-    ENDIF.
+    " =================================================================
+    " Numbering for Ticket Activity Entity
+    " =================================================================
+    LOOP AT mapped-ticketactivity ASSIGNING FIELD-SYMBOL(<fs_tkt_activity>).
+      DATA(ls_tkt_activity) = <fs_tkt_activity>-%tmp.
+      <fs_tkt_activity>-%key-TicketId = ls_tkt_activity-TicketId.
+      <fs_tkt_activity>-%key-ActivityUuid = ls_tkt_activity-ActivityUuid.
+    ENDLOOP.
 
   ENDMETHOD.
 
   METHOD cleanup_finalize.
-  ENDMETHOD.
-
-  METHOD save_modified.
-*    IF update-ticketinfo IS NOT INITIAL.
-*      NEW zrj_wf_class( )->trigger_workflow(  ).
-*    ENDIF.
   ENDMETHOD.
 
 ENDCLASS.
