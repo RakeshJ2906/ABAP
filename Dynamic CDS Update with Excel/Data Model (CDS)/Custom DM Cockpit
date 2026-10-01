@@ -1,0 +1,56 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Custom DM Cockpit'
+@Metadata.ignorePropagatedAnnotations: true
+define root view entity ZI_DM_COCKPIT
+  as select from ztb_dm_cockpit
+  //composition of target_data_source_name as _association_name
+{
+      @UI.facet: [{ id: 'BO_Update',
+                      position: 10,
+                      label: 'Business Object Update',
+                      purpose: #STANDARD,
+                      type: #IDENTIFICATION_REFERENCE }]
+
+      @UI: { lineItem: [{ position: 10, label: 'Business Object' }],
+             identification: [{ position: 10, label: 'Business Object' },
+                              { type: #FOR_ACTION, dataAction: 'downloadTemplate', label: 'Download Template' },
+                              { type: #FOR_ACTION, dataAction: 'uploadTemplate', label: 'Upload Template' },
+                              { type: #FOR_ACTION, dataAction: 'updateObject', label: 'Update Object' }] }
+      @EndUserText.label: 'Business Object'
+  key business_object       as BusinessObject,
+      @Semantics.largeObject : { mimeType: 'Mimetype',
+                                 fileName: 'Filename',
+                                 acceptableMimeTypes: [ 'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+                                 contentDispositionPreference: #ATTACHMENT }
+      @UI: { lineItem: [{ position: 15, label: 'Template' }],
+             identification: [{ position: 15, label: 'Template' }] }
+      template              as Template,
+      @Semantics.largeObject : { mimeType: 'MimetypeAtt',
+                                 fileName: 'FilenameAtt',
+                                 acceptableMimeTypes: [ 'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+                                 contentDispositionPreference: #ATTACHMENT }
+      @UI: { lineItem: [{ position: 20, label: 'Attachment' }],
+             identification: [{ position: 20, label: 'Attachment' }] }
+      attachment            as Attachment,
+      mimetype              as Mimetype,
+      filename              as Filename,
+      mimetype_att          as MimetypeAtt,
+      filename_att          as FilenameAtt,
+      @UI.hidden: true
+      @Semantics.user.createdBy: true
+      created_by            as CreatedBy,
+      @UI.hidden: true
+      @Semantics.systemDateTime.createdAt: true
+      created_at            as CreatedAt,
+      @UI.hidden: true
+      @Semantics.user.lastChangedBy: true
+      last_changed_by       as LastChangedBy,
+      @UI.hidden: true
+      @Semantics.systemDateTime.lastChangedAt: true
+      last_changed_at       as LastChangedAt,
+      @UI.hidden: true
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at as LocalLastChangedAt
+
+      //_association_name // Make association public
+}
